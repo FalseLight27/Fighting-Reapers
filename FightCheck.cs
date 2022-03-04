@@ -102,13 +102,13 @@ namespace FightingReapers
 
             // Spherecast to detect biteable objects in front of the reaper's mouth
 
-            Physics.SphereCast(ra.mouth.transform.position, 2.5f, ra.mouth.transform.forward, out fb.clawPoint, 5f);
+            Physics.SphereCast(ra.mouth.transform.position, 5f, ra.mouth.transform.forward, out fb.clawPoint, 5f);
 
             // Regulate reaper aggression to prevent too much rapid-fire clawing
 
-            if (__instance.Aggression.Value >= 0.80 && __instance.Aggression.Value > 0.15)
+            if (__instance.Aggression.Value > 0.15)
             {
-                __instance.Aggression.Add(Time.deltaTime * -0.25f);
+                __instance.Aggression.Add(Time.deltaTime * -0.12f);
             }
 
 
@@ -119,19 +119,7 @@ namespace FightingReapers
 
             Logger.Log(Logger.Level.Info, "SEEK_ENEMY_REAPERS PASSED CHECK 2");
 
-            // 50 percent of the time, if the enemy is within twice the bite distance, the Reaper will do a pincer attack with its claws
-            if (fb.clawPoint.collider != null)
-            {                
-                bm.Claw();                                
-                Logger.Log(Logger.Level.Info, "CLAW CHECK PASSED");
-
-            }
-            
-            else if (fb.clawPoint.collider == null)
-            {
-                bm.StopClaw();
-                Logger.Log(Logger.Level.Info, "STOPCLAW CHECK PASSED");
-            }
+           
             
             
             Logger.Log(Logger.Level.Info, "SEEK_ENEMY_REAPERS PASSED CHECK 3");
@@ -141,7 +129,7 @@ namespace FightingReapers
             {
                 
                 fb.targetFound = true;
-                __instance.Aggression.Add(UnityEngine.Random.Range(0.15f, 0.31f));
+                __instance.Aggression.Add(UnityEngine.Random.Range(0.31f, 0.51f));
                 ar.DesignateTarget(fb.targetReaper.transform);
                 ar.StartPerform(__instance);
                 ar.UpdateAttackPoint();
@@ -173,7 +161,7 @@ namespace FightingReapers
                     if (fb.targetDist <= 25f)
                     {                                                
 
-                        // 50 percent of the time, a Reaper will twist its body in order to fit its claws around the enemy Reaper's body
+                        // 80 percent of the time, a Reaper will twist its body in order to fit its claws around the enemy Reaper's body
                         if (fb.moveChance <= 0.80f && Time.time > fb.nextMove)
                         {
                             fb.nextMove = Time.time + fb.randomCooldown;
@@ -181,7 +169,7 @@ namespace FightingReapers
 
                         }
 
-                        // 50 percent of the time, a Reaper will reel back to prepare for a lunge
+                        // 80 percent of the time, a Reaper will reel back to prepare for a lunge
 
                         if (fb.moveChance < 0.80f && Time.time > fb.nextMove)
                         {
@@ -194,9 +182,9 @@ namespace FightingReapers
 
                     
 
-                    // If the Reaper is within 30m of the enemy, it will lunge at it.
+                    // If the Reaper is within 50m of the enemy, the Reaper will lunge at it.
 
-                    if (fb.targetDist < 50f && fb.moveChance >= 0.9f && __instance.Tired.Value < 0.60f && Time.time > fb.nextMove)
+                    if (fb.targetDist < 50f && fb.moveChance >= 0.50f && __instance.Tired.Value < 0.60f && Time.time > fb.nextMove)
                     {
                         fb.nextMove = Time.time + fb.randomCooldown;
                         bm.Lunge(__instance);                        
@@ -224,7 +212,20 @@ namespace FightingReapers
                 Logger.Log(Logger.Level.Info, "SEEK_ENEMY_REAPERS PASSED CHECK 7");
             }
 
-            
+            // If the enemy within range, the Reaper will do a pincer attack with its claws
+            if ((fb.clawPoint.collider != null) && (fb.clawPoint.collider != fb.GetComponentInParent<Collider>()))
+            {
+                bm.Claw();
+                Logger.Log(Logger.Level.Info, "CLAW CHECK PASSED");
+
+            }
+
+            else if (fb.clawPoint.collider == null || (fb.clawPoint.collider == fb.GetComponentInParent<Collider>()))
+            {
+                bm.StopClaw();
+                Logger.Log(Logger.Level.Info, "STOPCLAW CHECK PASSED");
+            }
+
 
             //bm.Tackle();
 

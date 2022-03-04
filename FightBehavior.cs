@@ -38,8 +38,8 @@ namespace FightingReapers
         public float attackCD;
         public GameObject bloodPrefab;
         internal GameObject CachedBloodPrefab;
-        public float lifetimeScale = 2f;
-        public float startSizeScale = 12f;
+        public float lifetimeScale = 5f;
+        public float startSizeScale = 30f;
         public Transform mouth;
         public Transform LTMandible;
         public Transform RTMandible;
@@ -257,15 +257,18 @@ namespace FightingReapers
             {
 
                 var animator = creature.GetComponentInChildren<Animator>();
+                animator.speed = 0.5f;
+                yield return new WaitForSeconds(2f);
+                animator.speed = UnityEngine.Random.Range(0f,1f);
+                yield return new WaitForSeconds(2f);
+                animator.speed = UnityEngine.Random.Range(0f, 1f);
+                yield return new WaitForSeconds(2f);
+                animator.speed = UnityEngine.Random.Range(0f, 1f);
+                yield return new WaitForSeconds(2f);
+                animator.speed = 0.3f;
+                yield return new WaitForSeconds(2f);
                 animator.enabled = false;
-                yield return new WaitForSeconds(0.05f);
-                animator.enabled = true;
-                yield return new WaitForSeconds(0.5f);
-                animator.enabled = false;
-                yield return new WaitForSeconds(0.05f);
-                animator.enabled = true;
-                yield return new WaitForSeconds(0.05f);
-                animator.enabled = false;
+
 
             }
 
@@ -273,8 +276,14 @@ namespace FightingReapers
             {
                 ListOfLeviathans.LeviathanList.Remove(__instance);
                 var rm = __instance.GetComponentInChildren<ReaperMeleeAttack>();
+                var fb = __instance.GetComponentInParent<FightBehavior>();
                 SafeAnimator.SetBool(__instance.GetAnimator(), "attacking", false);
                 rm.animator.SetBool(MeleeAttack.biteAnimID, false);
+
+                UnityEngine.Object.Destroy(fb.LBMandible.gameObject.GetComponent<TriggerController>());
+                UnityEngine.Object.Destroy(fb.RBMandible.gameObject.GetComponent<TriggerController>());
+                UnityEngine.Object.Destroy(fb.LTMandible.gameObject.GetComponent<TriggerController>());
+                UnityEngine.Object.Destroy(fb.RTMandible.gameObject.GetComponent<TriggerController>());
 
                 CoroutineHost.StartCoroutine(DeathThroes(__instance));
 

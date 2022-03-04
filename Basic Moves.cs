@@ -38,13 +38,14 @@ namespace FightingReapers
         public override void OnTouch(Collider collider)
         {
             var fb = this.GetComponentInParent<FightBehavior>();
+            var thisCollider = this.GetComponentInParent<Collider>();
+            var liveMixin = this.creature.liveMixin; 
 
-            if (Time.time > fb.nextAttack)
+            if ((Time.time > fb.nextAttack) && (collider != thisCollider) && (liveMixin.health != 0))
             {
                 fb.nextAttack = Time.time + fb.attackCD;
                 Bite(collider);
-            }
-            
+            }            
             
         }
         /*
@@ -132,12 +133,13 @@ namespace FightingReapers
         {            
             var fb = this.GetComponentInParent<FightBehavior>();
             var rm = this.GetComponentInParent<ReaperMeleeAttack>();
-            var thisReaper = this.GetComponentInParent<ReaperLeviathan>();            
-
+            var thisReaper = this.GetComponentInParent<ReaperLeviathan>();
+            var animator = this.GetComponentInParent<Animator>();
 
             SafeAnimator.SetBool(thisReaper.GetAnimator(), "attacking", true);
+            animator.speed = 3f;
             fb.isClawing = true;
-            thisReaper.Tired.Add(Time.deltaTime * 0.05f);
+            thisReaper.Tired.Add(0.5f);
             
             Logger.Log(Logger.Level.Info, "CLAW PASSED CHECK 1");
 
@@ -208,8 +210,10 @@ namespace FightingReapers
             var fb = this.GetComponentInParent<FightBehavior>();
             var rm = this.GetComponentInParent<ReaperMeleeAttack>();
             var thisReaper = this.GetComponentInParent<ReaperLeviathan>();
+            var animator = this.GetComponentInParent<Animator>();
 
             SafeAnimator.SetBool(thisReaper.GetAnimator(), "attacking", false);
+            animator.speed = 1f;
             fb.isClawing = false;
         }
 
@@ -263,13 +267,13 @@ namespace FightingReapers
             var rm = this.GetComponentInParent<ReaperMeleeAttack>();
             var thisReaperBody = this.GetComponentInParent<Rigidbody>();
 
-            if (creature.Tired.Value < 0.65f)
+            if (creature.Tired.Value < 0.90f)
             {
-                thisReaperBody.AddForce(rm.mouth.transform.forward * 20f, ForceMode.VelocityChange);
+                thisReaperBody.AddForce(rm.mouth.transform.forward * 30f, ForceMode.VelocityChange);
             }
-            else if (creature.Tired.Value >= 0.65f)
+            else if (creature.Tired.Value >= 0.90f)
             {
-                thisReaperBody.AddForce(rm.mouth.transform.forward * 10f, ForceMode.VelocityChange);
+                thisReaperBody.AddForce(rm.mouth.transform.forward * 15f, ForceMode.VelocityChange);
             }            
             
             Logger.Log(Logger.Level.Debug, $"LUNGING AT {thisReaperBody.velocity.magnitude} M/S");

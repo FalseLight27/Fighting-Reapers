@@ -25,15 +25,15 @@ namespace FightingReapers
         public void OnTriggerEnter(Collider other)
         {
             var fb = thisMandible.GetComponentInParent<FightBehavior>();
+            var thisLiveMixin = thisMandible.GetComponentInParent<LiveMixin>();
             LiveMixin enemyLiveMixin = other.GetComponentInParent<LiveMixin>();
             BreakableResource breakable = other.GetComponentInParent<BreakableResource>();
             VFXSurface component1 = other.GetComponentInParent<VFXSurface>();
             Vector3 position = other.ClosestPointOnBounds(thisMandible.transform.position);
             Vector3 bleedPoint = other.transform.InverseTransformPoint(position);
 
-            if (fb.isClawing)
+            if (fb.isClawing && (other != thisMandible.GetComponentInParent<Collider>()) && (thisLiveMixin.health != 0))
             {
-
 
                 VFXSurfaceTypeManager.main.Play(component1, VFXEventTypes.impact, position, Quaternion.identity, thisReaper.transform);
 
