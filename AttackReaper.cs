@@ -25,7 +25,11 @@ namespace FightingReapers
 		private Vector3 targetAttackPoint;
 		public float scratchTimer = 0f;
 		public bool startTimer = false;
-		
+		public Vector3 dir;
+		public Vector3 og;
+		public GameObject susObj;
+		public GameObject targetObj;
+
 
 
 		public static AttackReaper main;
@@ -36,6 +40,151 @@ namespace FightingReapers
 			main = this;
 
         }
+
+		public GameObject SeeEnemy(RaycastHit[] array)
+		{
+			bool obstructed;
+			bool hasLiveMixin;
+			bool isBase;
+			bool isLeviathan;
+			for (int i = 0; i < array.Length; i++)
+			{
+				hasLiveMixin = array[i].transform.gameObject.GetComponent<LiveMixin>();
+				isBase = array[i].transform.gameObject.GetComponent<Base>();
+				isLeviathan = array[i].transform.GetComponentInChildren<GhostLeviathan>() || array[i].transform.GetComponentInChildren<GhostLeviatanVoid>() || array[i].transform.GetComponentInChildren<ReaperLeviathan>() || array[i].transform.GetComponentInChildren<SeaDragon>();
+				if (isLeviathan)
+				{
+					ErrorMessage.AddMessage("ENEMY VISIBLE");
+					return array[i].transform.gameObject;
+				}
+					
+				else if (!hasLiveMixin || isBase)
+                {
+					return null;
+				}
+					
+			}
+
+			return null;
+			
+		}
+
+		public GameObject HearEnemy(Collider[] array)
+		{
+			
+			bool hasLiveMixin;
+			bool isBase;
+			bool isLeviathan;
+			for (int i = 0; i < array.Length; i++)
+			{
+				hasLiveMixin = array[i].transform.gameObject.GetComponent<LiveMixin>();
+				isBase = array[i].transform.gameObject.GetComponent<Base>();
+				isLeviathan = array[i].transform.GetComponentInChildren<GhostLeviathan>() || array[i].transform.GetComponentInChildren<GhostLeviatanVoid>() || array[i].transform.GetComponentInChildren<ReaperLeviathan>() || array[i].transform.GetComponentInChildren<SeaDragon>();
+				if (isLeviathan)
+                {
+					return array[i].transform.gameObject;
+					ErrorMessage.AddMessage("REAPER HEARS SOMETHING");
+				}									
+			}
+
+			return null;
+
+		}
+
+		public GameObject Search()
+        {
+			var fb = creature.GetComponent<FightBehavior>();
+			var swim = creature.GetComponent<SwimBehaviour>();
+			var ra = creature.GetComponent<ReaperMeleeAttack>();
+			var loco = creature.GetComponent<Locomotion>();
+			var thisReaper = creature;
+			bool isReaper;
+			bool isGhost;
+			bool isDragon;			
+
+						
+			RaycastHit[] searchPoints;
+			Collider[] hearObj;
+
+			//loco.targetForward.x = 20f;
+
+			dir = ra.mouth.transform.forward * 2;
+			og = ra.mouth.transform.up + new Vector3(0, 0, 1);
+			searchPoints = Physics.SphereCastAll(og, 5f, dir, 150f);
+			hearObj = Physics.OverlapSphere(ra.mouth.transform.up, 60f);
+			
+
+
+
+			IEnumerator ScanSurroundings()
+			{
+				loco.targetForward.x = UnityEngine.Random.Range(0, 999f);
+				loco.targetForward.y = UnityEngine.Random.Range(-20f, -100f);
+				loco.targetForward.z = UnityEngine.Random.Range(0, 999f);
+				yield return new WaitForSeconds(UnityEngine.Random.Range(1, 6f));
+				loco.targetForward.x = UnityEngine.Random.Range(0, 999f);
+				loco.targetForward.y = UnityEngine.Random.Range(-20f, -100f);
+				loco.targetForward.z = UnityEngine.Random.Range(0, 999f);
+				yield return new WaitForSeconds(UnityEngine.Random.Range(1, 6f));
+				loco.targetForward.x = UnityEngine.Random.Range(0, 999f);
+				loco.targetForward.y = UnityEngine.Random.Range(-20f, -100f);
+				loco.targetForward.z = UnityEngine.Random.Range(0, 999f);
+				yield return new WaitForSeconds(UnityEngine.Random.Range(1, 6f));
+				loco.targetForward.x = UnityEngine.Random.Range(0, 999f);
+				loco.targetForward.y = UnityEngine.Random.Range(-20f, -100f);
+				loco.targetForward.z = UnityEngine.Random.Range(0, 999f);
+				yield return new WaitForSeconds(UnityEngine.Random.Range(1, 6f));
+
+			}
+
+			CoroutineHost.StartCoroutine(ScanSurroundings());
+
+			targetObj = SeeEnemy(searchPoints);
+
+			if (targetObj != null)
+
+            {
+				isReaper = targetObj.GetComponentInChildren<ReaperLeviathan>();
+				isGhost = targetObj.transform.GetComponentInChildren<GhostLeviathan>() || targetObj.transform.GetComponentInChildren<GhostLeviatanVoid>();
+				isDragon = targetObj.GetComponentInChildren<SeaDragon>();
+
+				if (isReaper)
+                {
+					ErrorMessage.AddMessage("REAPER ACQUIRED");
+                }
+
+				if (isGhost)
+				{
+					ErrorMessage.AddMessage("GHOST ACQUIRED");
+				}
+
+				if (isDragon)
+				{
+					ErrorMessage.AddMessage("SEADRAGON ACQUIRED");
+				}
+			}
+
+			else if (targetObj == null)
+
+            {
+				susObj = HearEnemy(hearObj);				
+
+				swim.LookAt(susObj.transform);
+				
+			}
+
+			if (susObj != null)
+			{
+				if (Vector3.Distance(susObj.transform.position, thisReaper.transform.position) < 35f)
+				{
+					susObj = targetObj;
+				}
+			}
+
+
+
+			return targetObj;			
+		}
 
 		public void DesignateTarget(Transform transform)
 
@@ -94,14 +243,14 @@ namespace FightingReapers
 			IEnumerator AddSpeed()
             {
 				creature.Tired.Add(0.1f);
-				if (creature.Tired.Value < 0.20)
+				if (creature.Tired.Value < 0.50)
                 {
-					this.swimVelocity = 30f;
+					this.swimVelocity = 40f;
 				}
 
-				else if (creature.Tired.Value >= 0.20)
+				else if (creature.Tired.Value >= 0.50)
                 {
-					this.swimVelocity = 20;
+					this.swimVelocity = 25;
                 }
 				
 				yield return new WaitForSeconds(3);
