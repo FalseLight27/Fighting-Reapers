@@ -15,7 +15,7 @@ namespace FightingReapers
         public static List<Creature> LeviathanList = new List<Creature>();
         public GameObject closestLev;
         public float minDist;
-        public float maxDist = 200f;
+        public float maxDist = 150f;
         public GameObject FindNearbyHostile(Creature me)
         {
             if (closestLev != null)
@@ -58,6 +58,7 @@ namespace FightingReapers
             var at = __instance.GetComponentInParent<AggressiveWhenSeeTarget>();
             var rb = __instance.GetComponentInParent<Rigidbody>();
             var lol = __instance.GetComponentInParent<ListOfLeviathans>();
+            var thisReaper = __instance.GetComponentInParent<ReaperLeviathan>();
             var tr = ra.mouth.transform;
             var og = ra.mouth.transform.position;
             var startPosition = tr.forward;
@@ -73,28 +74,8 @@ namespace FightingReapers
 
             if (potentialTarget != null)
 
-            {
-                bool isReaper = potentialTarget.GetComponentInChildren<ReaperLeviathan>();
-                bool isGhost = potentialTarget.GetComponentInChildren<GhostLeviathan>() || potentialTarget.GetComponentInChildren<GhostLeviatanVoid>();                
-                bool isDragon = potentialTarget.GetComponentInChildren<SeaDragon>();
-
-                if (isReaper || isGhost || isDragon)
-                {
-                    fb.targetReaper = potentialTarget;
-                    
-                    if (isReaper)
-                    {
-                        ErrorMessage.AddMessage("TARGET FOUND: REAPER");
-                    }
-                    if (isGhost)
-                    {
-                        ErrorMessage.AddMessage("TARGET FOUND: GHOST");
-                    }
-                    if (isDragon)
-                    {
-                        ErrorMessage.AddMessage("TARGET FOUND: DRAGON");
-                    }
-                }
+            {                                                   
+                    fb.targetReaper = ar.Search();                                  
 
             }
 
@@ -102,13 +83,13 @@ namespace FightingReapers
 
             // Spherecast to detect biteable objects in front of the reaper's mouth
 
-            Physics.SphereCast(ra.mouth.transform.position, 5f, ra.mouth.transform.forward, out fb.clawPoint, 5f);
+            Physics.SphereCast(ra.mouth.transform.position, 2.5f, ra.mouth.transform.forward, out fb.clawPoint, 5f);
 
             // Regulate reaper aggression to prevent too much rapid-fire clawing
 
-            if (__instance.Aggression.Value > 0.15)
+            if (__instance.Aggression.Value > 0.30)
             {
-                __instance.Aggression.Add(Time.deltaTime * -0.12f);
+                __instance.Aggression.Add(Time.deltaTime * -0.02f);
             }
 
 
@@ -180,11 +161,17 @@ namespace FightingReapers
 
                     }
 
+                    if (fb.targetDist <= 2.5f)
+                    {
+                        bm.Push(__instance, fb.targetReaper);
+                    }
                     
 
-                    // If the Reaper is within 50m of the enemy, the Reaper will lunge at it.
 
-                    if (fb.targetDist < 50f && fb.moveChance >= 0.50f && __instance.Tired.Value < 0.60f && Time.time > fb.nextMove)
+
+                        // If the Reaper is within 50m of the enemy, the Reaper will lunge at it.
+
+                        if (fb.targetDist < 50f && fb.moveChance >= 0.10f && __instance.Tired.Value < 0.90f && Time.time > fb.nextMove)
                     {
                         fb.nextMove = Time.time + fb.randomCooldown;
                         bm.Lunge(__instance);                        
@@ -213,18 +200,26 @@ namespace FightingReapers
             }
 
             // If the enemy within range, the Reaper will do a pincer attack with its claws
-            if ((fb.clawPoint.collider != null) && (fb.clawPoint.collider != fb.GetComponentInParent<Collider>()))
+            if ((fb.clawPoint.collider != null) && (fb.clawPoint.collider != thisReaper.GetComponentInChildren<Collider>()) && (fb.clawPoint.distance < 3.5f))
             {
                 bm.Claw();
                 Logger.Log(Logger.Level.Info, "CLAW CHECK PASSED");
 
             }
 
-            else if (fb.clawPoint.collider == null || (fb.clawPoint.collider == fb.GetComponentInParent<Collider>()))
+            else if ((fb.clawPoint.collider == null) || (fb.clawPoint.distance > 3.5f) || (fb.clawPoint.collider == thisReaper.GetComponentInChildren<Collider>()))
             {
                 bm.StopClaw();
                 Logger.Log(Logger.Level.Info, "STOPCLAW CHECK PASSED");
             }
+            /*
+            if ((fb.clawPoint.collider != null) && (fb.clawPoint.distance < 2f) && (fb.clawPoint.collider != thisReaper.GetComponentInChildren<Collider>()))
+            {
+                bm.Bite(fb.clawPoint.collider);
+                Logger.Log(Logger.Level.Info, "BITE CHECK PASSED");
+
+            }
+            */
 
 
             //bm.Tackle();

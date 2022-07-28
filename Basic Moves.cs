@@ -12,7 +12,7 @@ using Logger = QModManager.Utility.Logger;
 
 namespace FightingReapers
 {
-    public class BasicFightingMoves : MeleeAttack        
+    public class BasicFightingMoves : ReaperMeleeAttack        
     {
         
         public static BasicFightingMoves main;
@@ -34,20 +34,24 @@ namespace FightingReapers
             onTouch.onTouch.AddListener(OnTouch); // this is the C# syntax of callbacks, that is the name of the method without the open and close parentheses
         }
 
-
-        public override void OnTouch(Collider collider)
+        
+        public override float GetBiteDamage(GameObject target)
         {
-            var fb = this.GetComponentInParent<FightBehavior>();
-            var thisCollider = this.GetComponentInParent<Collider>();
-            var liveMixin = this.creature.liveMixin; 
+            var fb = GetComponentInParent<FightBehavior>();
 
-            if ((Time.time > fb.nextAttack) && (collider != thisCollider) && (liveMixin.health != 0))
+            if (target.GetComponent<SubControl>() != null)
             {
-                fb.nextAttack = Time.time + fb.attackCD;
-                Bite(collider);
-            }            
-            
+                return this.cyclopsDamage;
+            }
+
+            if (fb.critChance <= 0.40f)
+            {
+                return 200f;
+            }
+
+            return base.GetBiteDamage(target);
         }
+
         /*
         private void StartSetAnimParam(string paramName, float duration)
         {
@@ -62,8 +66,8 @@ namespace FightingReapers
         }
 
         */
-        
-        
+
+
 
         public void Bite(Collider collider)
         {
@@ -79,7 +83,7 @@ namespace FightingReapers
 
             if (fb.critChance <= 0.40f)
             {
-                this.biteDamage = 300f;
+                this.biteDamage = 200f;
             }
 
             else if (fb.critChance > 0.40f)
@@ -91,7 +95,7 @@ namespace FightingReapers
             Logger.Log(Logger.Level.Info, "BITE PASSED CHECK 2");
 
 
-            if (this.biteDamage == 300)
+            if (this.biteDamage == 200)
             {
                 Logger.Log(Logger.Level.Info, "CRIT ROLL SUCCEEDED!");
             }
@@ -101,7 +105,7 @@ namespace FightingReapers
             if (validBiteable != null)
             {
                 
-                Vector3 position = fb.mouth.transform.position;
+                Vector3 position = this.mouth.transform.position;
                 Vector3 bleedPoint = validBiteable.transform.InverseTransformPoint(position);
                 LiveMixin enemyLiveMixin = validBiteable.GetComponentInParent<LiveMixin>();
 
@@ -134,12 +138,13 @@ namespace FightingReapers
             var fb = this.GetComponentInParent<FightBehavior>();
             var rm = this.GetComponentInParent<ReaperMeleeAttack>();
             var thisReaper = this.GetComponentInParent<ReaperLeviathan>();
-            var animator = this.GetComponentInParent<Animator>();
+            
 
             SafeAnimator.SetBool(thisReaper.GetAnimator(), "attacking", true);
-            animator.speed = 3f;
+            thisReaper.GetAnimator().speed = 1.7f;
+            //thisReaper.Aggression.Add(1.0f);
             fb.isClawing = true;
-            thisReaper.Tired.Add(0.5f);
+            thisReaper.Tired.Add(0.05f);
             
             Logger.Log(Logger.Level.Info, "CLAW PASSED CHECK 1");
 
@@ -210,11 +215,13 @@ namespace FightingReapers
             var fb = this.GetComponentInParent<FightBehavior>();
             var rm = this.GetComponentInParent<ReaperMeleeAttack>();
             var thisReaper = this.GetComponentInParent<ReaperLeviathan>();
-            var animator = this.GetComponentInParent<Animator>();
+            
 
             SafeAnimator.SetBool(thisReaper.GetAnimator(), "attacking", false);
-            animator.speed = 1f;
-            fb.isClawing = false;
+            thisReaper.GetAnimator().speed = 1f;
+            //thisReaper.Aggression.Add(-0.5f);
+            fb.isClawing = false;            
+            ErrorMessage.AddMessage($"STOPPED CLAWING");
         }
 
         internal void FreezeRotation()
@@ -279,7 +286,30 @@ namespace FightingReapers
             Logger.Log(Logger.Level.Debug, $"LUNGING AT {thisReaperBody.velocity.magnitude} M/S");
 
         }
-       
+
+        public void Push(Creature creature, GameObject go)
+        {
+            var fb = this.GetComponent<FightBehavior>();
+            var ar = this.GetComponentInParent<AttackReaper>();
+            var thisReaper = this.GetComponentInParent<ReaperLeviathan>();
+            var rm = this.GetComponentInParent<ReaperMeleeAttack>();
+            var thisReaperBody = this.GetComponentInParent<Rigidbody>();
+            var swim = creature.gameObject.EnsureComponent<SwimBehaviour>();
+            Vector3 position = go.transform.forward * -2;
+
+            if (creature.Tired.Value < 0.90f)
+            {
+                swim.SwimTo(position, 25);
+            }
+            else if (creature.Tired.Value >= 0.90f)
+            {
+                swim.SwimTo(position, 15);
+            }
+
+            Logger.Log(Logger.Level.Debug, $"PUSHING AT {thisReaperBody.velocity.magnitude} M/S");
+
+        }
+
 
         public void Reel()
         {
