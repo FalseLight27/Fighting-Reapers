@@ -10,36 +10,49 @@ using Logger = QModManager.Utility.Logger;
 namespace FightingReapers
 {
     public class FightBehavior : MonoBehaviour
-    {        
+    {
 
         public Creature holdingEnemy;
         public EnemyType holdingEnemyType;
         public Transform grabPoint;
-        public float timeEnemyGrabbed;
-        public Vector3 enemyInitialPosition;        
+
+        public Vector3 enemyInitialPosition;
         public RaycastHit bitePoint;
-        public RaycastHit clawPoint;        
+        public RaycastHit clawPoint;
         public Collider biteObject;
         public Collider clawObject;
         public GameObject targetObj;
         public GameObject targetReaper;
-        public float targetDist;
-        public float biteDist;
+
         public bool targetFound;
         public bool isClawing;
-        public float nextNotif = 0.0f;
+        public bool canPush;
+        public bool clawsBusy;
+        public bool canClaw;
+
+        public float targetDist;
+        public float biteDist;
+        public float timeEnemyGrabbed;
+        public float nextNotif = 0.1f;
         public float notifRate = 4f;
+        public float curiosityUpdateRate = 2.2f;
         public float moveChance;
         public float attackChance;
         public float critChance;
         public float nextMove = 0.0f;
+        public float nextPush = 0.0f;
         public float nextAttack = 0.0f;
+        public float nextTarget = 0.0f;
+        public float nextCuriosityUpdate = 0.0f;
         public float randomCooldown;
+        public float targetCD = 0.5f;
         public float attackCD;
         public GameObject bloodPrefab;
         internal GameObject CachedBloodPrefab;
-        public float lifetimeScale = 5f;
-        public float startSizeScale = 30f;
+        public float lifetimeScale = 10f;
+        public float startSizeScale = 2f;
+        public float colorScale = 2f;
+
         public Transform mouth;
         public Transform LTMandible;
         public Transform RTMandible;
@@ -61,18 +74,22 @@ namespace FightingReapers
         public Collider clawable;
 
         public Dictionary<GameObject, Collider> clawObjects = new Dictionary<GameObject, Collider>();
-        
 
-        
+        public GameObject thisReaper;
+
+        public static readonly FMODAsset flinchSound = GetFmodAsset("event:/creature/reaper/attack_player");
+        public static readonly FMODAsset painSound = GetFmodAsset("event:/creature/reaper/attack_seamoth");
+
+        public Gradient bloodGradient;
 
         public void FixedUpdate()
 
         {
             moveChance = UnityEngine.Random.Range(0.0f, 1.01f);
             attackChance = UnityEngine.Random.Range(0.0f, 1.01f);
-            critChance = UnityEngine.Random.Range(0f, 1.0001f);        
+            critChance = UnityEngine.Random.Range(0f, 1.0001f);
             randomCooldown = UnityEngine.Random.Range(3f, 6f);
-            attackCD = UnityEngine.Random.Range(1f, 4f);
+            attackCD = UnityEngine.Random.Range(0.07f, 2f);
 
         }
 
@@ -89,6 +106,9 @@ namespace FightingReapers
 
         public void BloodGen(Collider target)
         {
+
+            
+
             if (target == null)
             {
                 return;
@@ -110,19 +130,114 @@ namespace FightingReapers
             }
 
             CachedBloodPrefab = Instantiate(bloodPrefab);
+
+            
+
             Logger.Log(Logger.Level.Debug, "Blood generated!");
             CachedBloodPrefab.SetActive(false);
             foreach (ParticleSystem ps in CachedBloodPrefab.GetComponentsInChildren<ParticleSystem>())
             {
                 var main = ps.main;
+                var col = ps.colorOverLifetime;
+                float alpha = 0.5f;
+
+                var bloodColor = bloodPrefab.GetComponentInChildren<Renderer>().material.color;
+
+
+
                 main.startLifetime = new ParticleSystem.MinMaxCurve(main.startLifetime.constant * lifetimeScale);
                 main.startSize = new ParticleSystem.MinMaxCurve(main.startSize.constant * startSizeScale);
+
+                Gradient grad = new Gradient();
+                grad.SetKeys(new GradientColorKey[] { new GradientColorKey(bloodColor, 999f), new GradientColorKey(bloodColor, 999f) }, new GradientAlphaKey[] { new GradientAlphaKey(alpha, 0.0f), new GradientAlphaKey(0.0f, 8.0f) });
+
+                col.color = grad;
+
+
+
             }
-            VFXDestroyAfterSeconds destroyAfterSeconds = CachedBloodPrefab.GetComponent<VFXDestroyAfterSeconds>();
-            DestroyImmediate(destroyAfterSeconds);
+            //VFXDestroyAfterSeconds destroyAfterSeconds = CachedBloodPrefab.GetComponent<VFXDestroyAfterSeconds>();
+            //Destroy(destroyAfterSeconds);
+
+            Destroy(bloodPrefab, 11f);
+        }
+        /*
+        IEnumerator BloodFade(GameObject go)
+        {
+
+            var renderer = go.GetComponent<Renderer>();
+
+            Color color;
+
+            if (renderer == null)
+            {
+                Logger.Log(Logger.Level.Info, "NO RENDERER");
+                yield return null;
+            }
+
+            if (renderer != null)
+
+            {
+                color = renderer.material.color;
+
+                if (color == null)
+                {
+                    Logger.Log(Logger.Level.Info, "NO COLOR");
+                    yield return null;
+                }
+            }
+
+            
+
+            
+
+            Logger.Log(Logger.Level.Info, "BLOODFADE PASSED CHECK 1");
+            yield return new WaitForSeconds(1f);
+            color.a = 0.75f;
+            Logger.Log(Logger.Level.Info, "BLOODFADE PASSED CHECK 2");
+            renderer.material.color = color;
+            yield return new WaitForSeconds(1f);
+            color.a = 0.50f;
+            renderer.material.color = color;
+            yield return new WaitForSeconds(1f);
+            color.a = 0.25f;
+            renderer.material.color = color;
+            yield return new WaitForSeconds(1f);
+            color.a = 0.10f;
+            renderer.material.color = color;
+            yield return new WaitForSeconds(1f);
+            color.a = 0.01f;
+            renderer.material.color = color;
+            Logger.Log(Logger.Level.Info, "BLOODFADE PASSED CHECK 3");
+            Destroy(go, 1f);
+            Logger.Log(Logger.Level.Info, "BLOODFADE PASSED ALL CHECKS");
+        }
+
+        */
+
+        public void Bleed(Collider collider, Vector3 bleedPoint)
+
+        {
+                BloodGen(collider);
+
+                GameObject blood1 = Instantiate(CachedBloodPrefab, bleedPoint, Quaternion.identity);
+
+                blood1.SetActive(true);
+
+                //CoroutineHost.StartCoroutine(BloodFade(blood1));
+        }
+
+
+        public static FMODAsset GetFmodAsset(string audioPath)
+        {
+            FMODAsset asset = ScriptableObject.CreateInstance<FMODAsset>();
+            asset.path = audioPath;
+            return asset;
         }
 
     }
+
+
 
     [HarmonyPatch(typeof(Creature))]
     [HarmonyPatch("Start")]
@@ -136,6 +251,9 @@ namespace FightingReapers
             bool isGhost = __instance.GetComponentInChildren<GhostLeviathan>();
             bool isDragon = __instance.GetComponentInChildren<SeaDragon>();
             var rm = __instance.GetComponentInChildren<ReaperMeleeAttack>();
+            Vector3 baseColPos;
+            Vector3 newColDir;
+            float baseColRad;
 
             if (isReaper)
             {
@@ -148,18 +266,29 @@ namespace FightingReapers
                 __instance.gameObject.EnsureComponent<AggressiveOnDamage>();
                 //__instance.gameObject.EnsureComponent<NibbleMeat>();
                 //__instance.gameObject.AddComponent<SwimToMeat>();
-                __instance.gameObject.AddComponent<ListOfLeviathans>();
+                
 
                 var fb =__instance.gameObject.GetComponent<FightBehavior>();
-                ListOfLeviathans.LeviathanList.Add(__instance);
+                
+
+                fb.thisReaper = __instance.gameObject;
 
                 /*
 
                 var baseCol = __instance.GetComponentInChildren<SphereCollider>();
-                baseCol.radius = 0.80f * baseCol.radius;                
-                baseCol.center += -2 * baseCol.transform.forward;
+                baseColPos = baseCol.center;
+                baseColRad = baseCol.radius;
+                newColDir = baseCol.transform.forward * -1;
+                UnityEngine.Object.Destroy(__instance.gameObject.GetComponent<SphereCollider>());
+                var newCollider = __instance.gameObject.AddComponent<CapsuleCollider>();
+                newCollider.center = baseColPos;
+                newCollider.radius = 0.95f * baseColRad;
+                newCollider.direction = -1;
 
-                */
+                baseCol.radius = 0.95f * baseCol.radius;                
+                baseCol.center += -0.95f * baseCol.transform.forward;*/
+
+
 
                 //fb.mouth = __instance.transform.Find("reaper_leviathan.root/neck/head/mouth_damage_trigger");
                 fb.LBMandible = __instance.transform.Find("reaper_leviathan/root/neck/head/LB_mandable");
@@ -174,16 +303,16 @@ namespace FightingReapers
                 //fb.mouthCol.center = fb.mouth.transform.forward;
                 fb.lbm = fb.LBMandible.gameObject.AddComponent<SphereCollider>();
                 fb.lbm.radius = 0.5f;
-                fb.lbm.center += 2 * fb.LBMandible.transform.forward;
+                fb.lbm.center += 1.8f * fb.LBMandible.transform.forward;
                 fb.rbm = fb.RBMandible.gameObject.AddComponent<SphereCollider>();
                 fb.rbm.radius = 0.5f;
-                fb.rbm.center += 2 * fb.RBMandible.transform.forward;
+                fb.rbm.center += 1.8f * fb.RBMandible.transform.forward;
                 fb.ltm = fb.LTMandible.gameObject.AddComponent<SphereCollider>();
                 fb.ltm.radius = 0.5f;
-                fb.ltm.center += 2 * fb.LTMandible.transform.forward;
+                fb.ltm.center += 1.8f * fb.LTMandible.transform.forward;
                 fb.rtm = fb.RTMandible.gameObject.AddComponent<SphereCollider>();
                 fb.rtm.radius = 0.5f;
-                fb.rtm.center += 2 * fb.RTMandible.transform.forward;
+                fb.rtm.center += 1.8f * fb.RTMandible.transform.forward;
 
                 Logger.Log(Logger.Level.Info, "START CHECK 2 PASSED");                
 
@@ -219,9 +348,18 @@ namespace FightingReapers
 
             }
 
+           
+
+            if (isGhost || isDragon)
+            {               
+
+                
+            }
 
         }
     }
+
+    /*
 
     [HarmonyPatch(typeof(Creature))]
     [HarmonyPatch("OnDestroy")]
@@ -232,15 +370,19 @@ namespace FightingReapers
         public static void UnlistReaper(Creature __instance)
         {
             bool isReaper = __instance.GetComponentInChildren<ReaperLeviathan>();
+            bool isGhost = __instance.GetComponentInChildren<GhostLeviathan>() || __instance.GetComponentInChildren<GhostLeviatanVoid>();
+            bool isDragon = __instance.GetComponentInChildren<SeaDragon>();
 
-            if (isReaper)
+            if (isReaper || isGhost || isDragon)
             {
-                ListOfLeviathans.LeviathanList.Remove(__instance);
+                
                 ErrorMessage.AddMessage($"REAPER DESTROYED");
                 Logger.Log(Logger.Level.Info, "REAPER DESTROYED");
             }
         }
     }
+
+    */
 
     [HarmonyPatch(typeof(Creature), nameof(Creature.OnKill))]
 
@@ -258,23 +400,35 @@ namespace FightingReapers
 
                 var animator = creature.GetComponentInChildren<Animator>();
                 animator.speed = 0.5f;
-                yield return new WaitForSeconds(2f);
+                yield return new WaitForSeconds(1f);
                 animator.speed = UnityEngine.Random.Range(0f,1f);
-                yield return new WaitForSeconds(2f);
+                yield return new WaitForSeconds(1f);
                 animator.speed = UnityEngine.Random.Range(0f, 1f);
-                yield return new WaitForSeconds(2f);
+                yield return new WaitForSeconds(1f);
+                animator.speed = 2f;
+                yield return new WaitForSeconds(1f);
                 animator.speed = UnityEngine.Random.Range(0f, 1f);
-                yield return new WaitForSeconds(2f);
-                animator.speed = 0.3f;
-                yield return new WaitForSeconds(2f);
-                animator.enabled = false;
+                yield return new WaitForSeconds(1f);
+                animator.speed = 2f;
+                yield return new WaitForSeconds(1f);
+                animator.speed = UnityEngine.Random.Range(0f, 1f);
+                yield return new WaitForSeconds(1f);
+                animator.speed = 1.6f;
+                yield return new WaitForSeconds(3f);
+                animator.speed = UnityEngine.Random.Range(0.8f, 1.4f);
+                yield return new WaitForSeconds(3f);
+                animator.speed = 1.8f;
+                yield return new WaitForSeconds(6f);
+                animator.speed = 1.6f;
+                yield return new WaitForSeconds(7f);
+                animator.speed = 0.8f;
 
 
             }
 
             if (isReaper)
             {
-                ListOfLeviathans.LeviathanList.Remove(__instance);
+               
                 var rm = __instance.GetComponentInChildren<ReaperMeleeAttack>();
                 var fb = __instance.GetComponentInParent<FightBehavior>();
                 SafeAnimator.SetBool(__instance.GetAnimator(), "attacking", false);
@@ -313,6 +467,9 @@ namespace FightingReapers
             {
                 timeSnapAgain = Time.time + snapInterval;
                 rb.AddForce(rm.mouth.transform.forward * 10f, ForceMode.VelocityChange);
+
+                Logger.Log(Logger.Level.Debug, "REFLEXIVE SNAP!");
+                ErrorMessage.AddMessage("REFLEXIVE SNAP!");
             }
 
         }
@@ -334,34 +491,54 @@ namespace FightingReapers
             var rm = __instance.GetComponentInChildren<ReaperMeleeAttack>();
             var liveMixin = __instance.GetComponentInParent<LiveMixin>();
 
-            if (damageInfo.damage >= 60f)
+            
+
+            if (damageInfo.damage >= 20f)
             {
                 //Look at damage dealer
 
-                __instance.Aggression.Add(damageInfo.damage * 0.5f);
+                __instance.Aggression.Add(damageInfo.damage * 0.05f);
                 __instance.Friendliness.Add(-aggro.friendlinessDecrement);
                 __instance.Tired.Add(-aggro.tirednessDecrement);
                 __instance.Happy.Add(-aggro.happinessDecrement);
                 global::Utils.PlayEnvSound(rm.playerAttackSound, __instance.transform.forward, 40f);
-                swim.LookAt(damageInfo.dealer.transform);
+                ar.AssessThreat(damageInfo.dealer.transform);
+                Utils.PlayFMODAsset(FightBehavior.flinchSound);
                 Logger.Log(Logger.Level.Debug, "NOTICEABLE DAMAGE!");
                 ErrorMessage.AddMessage("NOTICEABLE DAMAGE!");
+
+                creature.flinch += 0.4f * damageInfo.damage;
             }
 
 
-            if (damageInfo.damage >= 80f)
+            if (damageInfo.damage >= 25f)
             {
                 //Reflexively snap at damage dealer 
 
-                ar.DesignateTarget(damageInfo.dealer.transform);
-                Snap(__instance);
+                if (Time.time > fb.nextTarget)
+                {
+                    fb.nextTarget = Time.time + fb.targetCD;
+                    ar.DesignateTarget(damageInfo.dealer.transform);
+                    
+                }
 
-                Logger.Log(Logger.Level.Debug, "REFLEXIVE SNAP!");
-                ErrorMessage.AddMessage("REFLEXIVE SNAP!");
+                if (damageInfo.type == DamageType.Drill)
+
+                {
+
+                    fb.Bleed(collider, damageInfo.position); 
+
+
+                    Logger.Log(Logger.Level.Info, "CLAW PASSED CHECK 3");
+
+                }
+
+                Snap(__instance);
+                
             }
 
 
-            if (damageInfo.damage >= 300f)
+            if (damageInfo.damage >= 160f)
             {
                 //Bleed profusely upon receiving excessive damage
 
@@ -378,7 +555,7 @@ namespace FightingReapers
                             fb.BloodGen(collider);
                             GameObject blood = UnityEngine.Object.Instantiate(fb.CachedBloodPrefab, position, Quaternion.identity);
                             blood.SetActive(true);
-                            UnityEngine.Object.Destroy(blood, 4f);
+                            UnityEngine.Object.Destroy(blood, 10f);
                         }
                         yield return null;
                     }

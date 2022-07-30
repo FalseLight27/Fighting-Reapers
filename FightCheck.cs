@@ -10,35 +10,9 @@ using Logger = QModManager.Utility.Logger;
 
 namespace FightingReapers 
 {
-    public class ListOfLeviathans : MonoBehaviour
-    {
-        public static List<Creature> LeviathanList = new List<Creature>();
-        public GameObject closestLev;
-        public float minDist;
-        public float maxDist = 200f;
-        public GameObject FindNearbyHostile(Creature me)
-        {
-            if (closestLev != null)
-            {
-                minDist = Vector3.Distance(me.transform.position, closestLev.gameObject.transform.position);
-            }                       
+    
 
-            foreach (Creature lev in LeviathanList)
-            {
-
-                float dist = Vector3.Distance(lev.transform.position, me.transform.position);
-                if (((lev.gameObject != me.gameObject &&  dist < maxDist && dist < minDist) || lev.gameObject != me.gameObject && me.GetCanSeeObject(lev.gameObject)) && lev.gameObject != null)
-                {
-                    closestLev = lev.gameObject;
-                    minDist = dist;
-                    ErrorMessage.AddMessage("CLOSEST LEVIATHAN ACQUIRED");                                                                                                                          
-                }
-            }
-
-            return closestLev;
-        }
-
-    }
+    
 
 
     [HarmonyPatch(typeof(ReaperLeviathan))]
@@ -46,6 +20,7 @@ namespace FightingReapers
     internal class FightCheck
     {
         
+
         [HarmonyPostfix]
         public static void SeekEnemyReaper(ReaperLeviathan __instance)
         {
@@ -56,96 +31,119 @@ namespace FightingReapers
             var bm = __instance.GetComponentInParent<BasicFightingMoves>();            
             var ra = __instance.GetComponentInParent<ReaperMeleeAttack>();
             var at = __instance.GetComponentInParent<AggressiveWhenSeeTarget>();
+            var collider = __instance.GetComponentInParent<Collider>();
+
+            Logger.Log(Logger.Level.Info, "SEEK INITIAL CHECK 1 PASSED");
+
             var rb = __instance.GetComponentInParent<Rigidbody>();
-            var lol = __instance.GetComponentInParent<ListOfLeviathans>();
+           
+            var thisReaper = __instance.GetComponentInParent<ReaperLeviathan>();
             var tr = ra.mouth.transform;
             var og = ra.mouth.transform.position;
             var startPosition = tr.forward;
             var endPosition = og + (4f * tr.forward);
             var leftPosition = og + (-2.5f * tr.right) + (2f * tr.forward);
-                                    
 
-            GameObject potentialTarget = lol.FindNearbyHostile(__instance);
+            Logger.Log(Logger.Level.Info, "SEEK INITIAL CHECK 2 PASSED");
 
             
 
-            //If the Reaper can see the enemy leviathan, or if the enemy leviathan is within 100m of the Reaper, it will become the designated target.           
+            Logger.Log(Logger.Level.Info, "SEEK INITIAL CHECK 3 PASSED");
 
-            if (potentialTarget != null)
+            
+
+            if (__instance.IsHoldingVehicle())
 
             {
-                bool isReaper = potentialTarget.GetComponentInChildren<ReaperLeviathan>();
-                bool isGhost = potentialTarget.GetComponentInChildren<GhostLeviathan>() || potentialTarget.GetComponentInChildren<GhostLeviatanVoid>();                
-                bool isDragon = potentialTarget.GetComponentInChildren<SeaDragon>();
-
-                if (isReaper || isGhost || isDragon)
-                {
-                    fb.targetReaper = potentialTarget;
-                    
-                    if (isReaper)
-                    {
-                        ErrorMessage.AddMessage("TARGET FOUND: REAPER");
-                    }
-                    if (isGhost)
-                    {
-                        ErrorMessage.AddMessage("TARGET FOUND: GHOST");
-                    }
-                    if (isDragon)
-                    {
-                        ErrorMessage.AddMessage("TARGET FOUND: DRAGON");
-                    }
-                }
-
+                fb.clawsBusy = true;
             }
 
-            fb.targetDist = Vector3.Distance(__instance.transform.position, fb.targetReaper.transform.position);
+            else 
+            {
+                fb.clawsBusy = false;
+            }
+
+            //fb.canClaw = ar.SenseClawable();
+
+
+
+            Logger.Log(Logger.Level.Info, "SEEK INITIAL CHECK 4 PASSED");
+
+            
+
 
             // Spherecast to detect biteable objects in front of the reaper's mouth
+            //clawables = Physics.OverlapSphere(__instance.transform.forward * 2, 10f);
 
-            Physics.SphereCast(ra.mouth.transform.position, 5f, ra.mouth.transform.forward, out fb.clawPoint, 5f);
+
+            Logger.Log(Logger.Level.Info, "SEEK INITIAL CHECK 5 PASSED");
+
+
+
+           
 
             // Regulate reaper aggression to prevent too much rapid-fire clawing
 
-            if (__instance.Aggression.Value > 0.15)
+            if (__instance.Aggression.Value > 0.30)
             {
-                __instance.Aggression.Add(Time.deltaTime * -0.12f);
+                __instance.Aggression.Add(Time.deltaTime * -0.01f);
             }
 
+            Logger.Log(Logger.Level.Info, "SEEK INITIAL CHECK 6 PASSED");
 
 
-            Logger.Log(Logger.Level.Info, "SEEK_ENEMY_REAPERS PASSED CHECK 1");            
+            //clawableObj = ar.SenseClawable(clawables);
+
+                     
+
+            Logger.Log(Logger.Level.Info, "SEEK INITIAL CHECK 7 PASSED");
+
+            
+            
+            
+                    
+                
+                
+                
+
+                Logger.Log(Logger.Level.Info, "SEEK_ENEMY_REAPERS PASSED CHECK 1");
+
+            
+
+            
+
+                                 
+                                   
                                                          
-            //bm.OnTouch(biteObject);
+            //bm.OnTouch(biteObject);                                                         
 
-            Logger.Log(Logger.Level.Info, "SEEK_ENEMY_REAPERS PASSED CHECK 2");
-
-           
-            
-            
-            Logger.Log(Logger.Level.Info, "SEEK_ENEMY_REAPERS PASSED CHECK 3");
-
-            if (fb.targetReaper != null)
+            if (fb.targetReaper != null && fb.targetReaper != thisReaper)
 
             {
                 
                 fb.targetFound = true;
+                fb.targetDist = Vector3.Distance(__instance.transform.position, fb.targetReaper.transform.position);
                 __instance.Aggression.Add(UnityEngine.Random.Range(0.31f, 0.51f));
-                ar.DesignateTarget(fb.targetReaper.transform);
+
+                if (Time.time > fb.nextTarget)
+                {
+                    fb.nextTarget = Time.time + fb.targetCD;
+                    ar.DesignateTarget(fb.targetReaper.transform);
+
+                }
+
+                
                 ar.StartPerform(__instance);
                 ar.UpdateAttackPoint();
-
+                Logger.Log(Logger.Level.Info, "SEEK_ENEMY_REAPERS PASSED CHECK 2");
 
                 if (fb.targetFound == true)
                 {
                     ar.Approach();
 
-                    if (__instance.Aggression.Value <= 0.80)
-                    {
-                        __instance.Aggression.Add(Time.deltaTime * 0.09f);
-                    }                                                          
+                    Logger.Log(Logger.Level.Info, "SEEK_ENEMY_REAPERS PASSED CHECK 3");
 
-                    
-                    if(__instance.Aggression.Value >= 0.30f && __instance.Tired.Value < 0.30f && Time.time > fb.nextMove && fb.moveChance > 0.50f)
+                    if (__instance.Aggression.Value >= 400f && __instance.Tired.Value < 0.30f && Time.time > fb.nextMove && fb.moveChance > 0.50f)
                     {
                         fb.nextMove = Time.time + fb.randomCooldown;
                         ar.Charge(__instance);
@@ -158,11 +156,11 @@ namespace FightingReapers
 
                     
 
-                    if (fb.targetDist <= 25f)
+                    if (fb.targetDist <= 80f)
                     {                                                
 
                         // 80 percent of the time, a Reaper will twist its body in order to fit its claws around the enemy Reaper's body
-                        if (fb.moveChance <= 0.80f && Time.time > fb.nextMove)
+                        if (fb.moveChance <= 0.80f && Time.time > fb.nextMove && rb.velocity.magnitude > 4f)
                         {
                             fb.nextMove = Time.time + fb.randomCooldown;
                             bm.Twist();                            
@@ -180,11 +178,22 @@ namespace FightingReapers
 
                     }
 
+                    if (fb.targetDist <= 15f && Time.time > fb.nextPush)
+                    {
+                        fb.nextPush = Time.time + fb.randomCooldown;
+                        fb.canPush = true;
+                        bm.Push(__instance, fb.targetReaper);
+
+                        ErrorMessage.AddMessage($"PUSHING");
+                        Logger.Log(Logger.Level.Info, "PUSH CHECK PASSED");
+                    }
                     
 
-                    // If the Reaper is within 50m of the enemy, the Reaper will lunge at it.
 
-                    if (fb.targetDist < 50f && fb.moveChance >= 0.50f && __instance.Tired.Value < 0.60f && Time.time > fb.nextMove)
+
+                        // If the Reaper is within 50m of the enemy, the Reaper will lunge at it.
+
+                    if (fb.targetDist < 70f && fb.targetDist > 10f && fb.moveChance >= 0.10f && __instance.Tired.Value < 0.90f && Time.time > fb.nextMove)
                     {
                         fb.nextMove = Time.time + fb.randomCooldown;
                         bm.Lunge(__instance);                        
@@ -195,15 +204,17 @@ namespace FightingReapers
                     if (Time.time > fb.nextNotif)
                     {
                         fb.nextNotif = Time.time + fb.notifRate;
-                        Logger.Log(Logger.Level.Debug, $"ENEMY REAPER IS : {fb.targetDist} AWAY FROM ME");
+                        //Logger.Log(Logger.Level.Debug, $"ENEMY REAPER IS : {fb.targetDist} AWAY FROM ME");
                     }
                 }
             }
+
             else if (fb.targetReaper == null)
             {
                                 
                 if (Time.time > fb.nextNotif)
                 {
+                    fb.targetReaper = ar.Search();
                     fb.nextNotif = Time.time + fb.notifRate;
                     Logger.Log(Logger.Level.Debug, $"NO ENEMY REAPERS IN VICINITY");
                     ErrorMessage.AddMessage($"NO ENEMY REAPERS IN VICINITY");
@@ -211,23 +222,54 @@ namespace FightingReapers
                 ar.StopPerform(__instance);
                 Logger.Log(Logger.Level.Info, "SEEK_ENEMY_REAPERS PASSED CHECK 7");
             }
-
-            // If the enemy within range, the Reaper will do a pincer attack with its claws
-            if ((fb.clawPoint.collider != null) && (fb.clawPoint.collider != fb.GetComponentInParent<Collider>()))
+                
+            if (fb.targetDist < 20f)
             {
-                bm.Claw();
-                Logger.Log(Logger.Level.Info, "CLAW CHECK PASSED");
+                ErrorMessage.AddMessage("CLAWS READY");
+
+                // If the enemy within range, the Reaper will do a pincer attack with its claws
+                
+                    
+                    bm.Claw();
+                    Logger.Log(Logger.Level.Info, "CLAW CHECK PASSED");
+
+                
+               
+                /*
+                if ((fb.clawPoint.collider != null) && (fb.clawPoint.distance < 2f) && (fb.clawPoint.collider != thisReaper.GetComponentInChildren<Collider>()))
+                {
+                    bm.Bite(fb.clawPoint.collider);
+                    Logger.Log(Logger.Level.Info, "BITE CHECK PASSED");
+
+                }
+                */
+
+
+                //bm.Tackle();
 
             }
 
-            else if (fb.clawPoint.collider == null || (fb.clawPoint.collider == fb.GetComponentInParent<Collider>()))
+            else if (fb.targetDist > 20f)
             {
-                bm.StopClaw();
-                Logger.Log(Logger.Level.Info, "STOPCLAW CHECK PASSED");
+                ErrorMessage.AddMessage("CANNOT CLAW");
+                Logger.Log(Logger.Level.Info, "CANNOT CLAW");
+
+                if (fb.clawsBusy)
+
+                {
+                    ErrorMessage.AddMessage("CLAWS BUSY");
+                    Logger.Log(Logger.Level.Info, "CLAWS BUSY");
+                }
+
+                if (fb.isClawing)
+                {
+                    
+                    bm.StopClaw();
+                    Logger.Log(Logger.Level.Info, "STOPCLAW CHECK PASSED");
+                }
             }
 
 
-            //bm.Tackle();
 
             Logger.Log(Logger.Level.Info, "SEEK_ENEMY_REAPERS PASSED CHECK 8");
         }

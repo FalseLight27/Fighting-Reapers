@@ -12,7 +12,7 @@ using Logger = QModManager.Utility.Logger;
 
 namespace FightingReapers
 {
-    public class BasicFightingMoves : MeleeAttack        
+    public class BasicFightingMoves : ReaperMeleeAttack        
     {
         
         public static BasicFightingMoves main;
@@ -25,29 +25,31 @@ namespace FightingReapers
         public float freezeCD = 2f;
         public Animation anim;
         public GameObject prefab;
-        public GameObject prefab2;
-
-
-        private void Start()
+        public GameObject prefab2;        
+        
+        
+        /*
+        public override float GetBiteDamage(GameObject target)
         {
-            var onTouch = transform.Find("reaper_leviathan/root/neck/head/mouth_damage_trigger").gameObject.GetComponent<OnTouch>();
-            onTouch.onTouch.AddListener(OnTouch); // this is the C# syntax of callbacks, that is the name of the method without the open and close parentheses
-        }
+            var fb = GetComponentInParent<FightBehavior>();
 
-
-        public override void OnTouch(Collider collider)
-        {
-            var fb = this.GetComponentInParent<FightBehavior>();
-            var thisCollider = this.GetComponentInParent<Collider>();
-            var liveMixin = this.creature.liveMixin; 
-
-            if ((Time.time > fb.nextAttack) && (collider != thisCollider) && (liveMixin.health != 0))
+            if (target.GetComponent<SubControl>() != null)
             {
-                fb.nextAttack = Time.time + fb.attackCD;
-                Bite(collider);
-            }            
-            
+                ErrorMessage.AddMessage($"BITE ATTACK!");
+                return this.cyclopsDamage;
+            }
+
+            if (fb.critChance <= 0.40f)
+            {
+                ErrorMessage.AddMessage($"CRITICAL BITE!");
+                return 200f;
+            }
+            ErrorMessage.AddMessage($"BITE ATTACK!");
+            return base.GetBiteDamage(target);
         }
+
+        */
+
         /*
         private void StartSetAnimParam(string paramName, float duration)
         {
@@ -62,84 +64,28 @@ namespace FightingReapers
         }
 
         */
+
         
-        
-
-        public void Bite(Collider collider)
-        {
-            
-            var fb = GetComponentInParent<FightBehavior>();
-            var thisReaper = GetComponentInParent<ReaperLeviathan>();
-            var rm = GetComponentInParent<ReaperMeleeAttack>();
-            var validBiteable = collider;
-
-            Logger.Log(Logger.Level.Info, "BITE PASSED CHECK 1");
-
-            
-
-            if (fb.critChance <= 0.40f)
-            {
-                this.biteDamage = 300f;
-            }
-
-            else if (fb.critChance > 0.40f)
-
-            {
-                this.biteDamage = 100f;
-            }
-
-            Logger.Log(Logger.Level.Info, "BITE PASSED CHECK 2");
-
-
-            if (this.biteDamage == 300)
-            {
-                Logger.Log(Logger.Level.Info, "CRIT ROLL SUCCEEDED!");
-            }
-
-            
-
-            if (validBiteable != null)
-            {
-                
-                Vector3 position = fb.mouth.transform.position;
-                Vector3 bleedPoint = validBiteable.transform.InverseTransformPoint(position);
-                LiveMixin enemyLiveMixin = validBiteable.GetComponentInParent<LiveMixin>();
-
-                Logger.Log(Logger.Level.Info, "BITE PASSED CHECK 3");
-
-                if (enemyLiveMixin)
-                {
-                    enemyLiveMixin.TakeDamage(this.biteDamage, position, DamageType.Normal, thisReaper.gameObject);
-
-                    fb.BloodGen(validBiteable);
-                    GameObject blood = Instantiate(fb.CachedBloodPrefab, bleedPoint, Quaternion.identity);
-                    blood.SetActive(true);
-                    Destroy(blood, 4f);
-
-                }
-
-                VFXSurface component = validBiteable.GetComponent<VFXSurface>();
-                VFXSurfaceTypeManager.main.Play(component, VFXEventTypes.impact, position, Quaternion.identity, thisReaper.transform);
-
-                Logger.Log(Logger.Level.Info, "BITE PASSED CHECK 4");
-            }
-            
-            rm.animator.SetBool(MeleeAttack.biteAnimID, true);
-            
-            ErrorMessage.AddMessage($"BITE ATTACK!");
-        }
 
         public void Claw()
         {            
             var fb = this.GetComponentInParent<FightBehavior>();
-            var rm = this.GetComponentInParent<ReaperMeleeAttack>();
+            
             var thisReaper = this.GetComponentInParent<ReaperLeviathan>();
-            var animator = this.GetComponentInParent<Animator>();
+            
 
-            SafeAnimator.SetBool(thisReaper.GetAnimator(), "attacking", true);
-            animator.speed = 3f;
+            //SafeAnimator.SetBool(thisReaper.GetAnimator(), "attacking", true);
+            //thisReaper.GetAnimator().speed = 1.3f;
+
+            
+
+            if (thisReaper.Aggression.Value < 500f)
+            {
+                thisReaper.Aggression.Value = 500f;                
+            }
+
             fb.isClawing = true;
-            thisReaper.Tired.Add(0.5f);
+            //thisReaper.Tired.Add(0.035f);
             
             Logger.Log(Logger.Level.Info, "CLAW PASSED CHECK 1");
 
@@ -199,10 +145,10 @@ namespace FightingReapers
 
             */
 
-            ErrorMessage.AddMessage($"CLAW ATTACK!");
-            
-            global::Utils.PlayEnvSound(rm.playerAttackSound, thisReaper.transform.forward, 35f);
 
+
+            
+            ErrorMessage.AddMessage($"CLAW ATTACK!");
         }
         
         public void StopClaw()
@@ -210,11 +156,17 @@ namespace FightingReapers
             var fb = this.GetComponentInParent<FightBehavior>();
             var rm = this.GetComponentInParent<ReaperMeleeAttack>();
             var thisReaper = this.GetComponentInParent<ReaperLeviathan>();
-            var animator = this.GetComponentInParent<Animator>();
+            
 
             SafeAnimator.SetBool(thisReaper.GetAnimator(), "attacking", false);
-            animator.speed = 1f;
+            thisReaper.GetAnimator().speed = 1f;
+            thisReaper.Aggression.Value *= 0.5f;
             fb.isClawing = false;
+
+            
+                ErrorMessage.AddMessage($"NOT CLAWING");
+            
+            
         }
 
         internal void FreezeRotation()
@@ -245,14 +197,14 @@ namespace FightingReapers
             {
                 //Roll right
                 case 1: 
-                    thisReaperBody.AddTorque(thisReaperBody.transform.forward * 2.5f, ForceMode.VelocityChange);
-                    Invoke("FreezeRotation", 5f);
+                    thisReaperBody.AddTorque(thisReaperBody.transform.forward * 4.5f, ForceMode.VelocityChange);
+                    Invoke("FreezeRotation", 2.5f);
                     break;
 
                 //Roll left
                 case 2:
-                    thisReaperBody.AddTorque(thisReaperBody.transform.forward * -2.5f, ForceMode.VelocityChange);
-                    Invoke("FreezeRotation", 5f);
+                    thisReaperBody.AddTorque(thisReaperBody.transform.forward * -4.5f, ForceMode.VelocityChange);
+                    Invoke("FreezeRotation", 2.5f);
                     break;
             }           
                         
@@ -273,13 +225,44 @@ namespace FightingReapers
             }
             else if (creature.Tired.Value >= 0.90f)
             {
-                thisReaperBody.AddForce(rm.mouth.transform.forward * 15f, ForceMode.VelocityChange);
+                thisReaperBody.AddForce(rm.mouth.transform.forward * 20f, ForceMode.VelocityChange);
             }            
             
             Logger.Log(Logger.Level.Debug, $"LUNGING AT {thisReaperBody.velocity.magnitude} M/S");
 
         }
-       
+
+        public void Push(Creature creature, GameObject go)
+        {
+            var fb = this.GetComponent<FightBehavior>();
+            var ar = this.GetComponentInParent<AttackReaper>();
+            var thisReaper = this.GetComponentInParent<ReaperLeviathan>();
+            var rm = this.GetComponentInParent<ReaperMeleeAttack>();
+            var thisReaperBody = this.GetComponentInParent<Rigidbody>();
+
+            //var swim = creature.gameObject.EnsureComponent<SwimBehaviour>();
+
+            Vector3 position = go.transform.forward * -2;
+
+            Logger.Log(Logger.Level.Debug, $"PUSH PASSED CHECK 1");
+
+            if (creature.Tired.Value < 0.90f)
+            {
+                //swim.SwimTo(position, 25f);
+                thisReaperBody.AddForce((rm.mouth.transform.forward * 30f) + (rm.mouth.transform.right * UnityEngine.Random.Range(-20f, 20f)), ForceMode.VelocityChange);
+                Logger.Log(Logger.Level.Debug, $"PUSH PASSED CHECK 2");
+            }
+            else if (creature.Tired.Value >= 0.90f)
+            {
+                //swim.SwimTo(position, 15f);
+                thisReaperBody.AddForce((rm.mouth.transform.forward * 20f) + (rm.mouth.transform.right * UnityEngine.Random.Range(-12f,12f)), ForceMode.VelocityChange);
+                Logger.Log(Logger.Level.Debug, $"PUSH PASSED CHECK 3");
+            }
+
+            Logger.Log(Logger.Level.Debug, $"PUSHING AT {thisReaperBody.velocity.magnitude} M/S");
+
+        }
+
 
         public void Reel()
         {
@@ -291,7 +274,7 @@ namespace FightingReapers
             var tr = rm.mouth.transform;
             var og = rm.mouth.transform.forward;
 
-            thisReaperBody.AddForce(og + (10 * tr.up) + -(10 * tr.forward), ForceMode.VelocityChange);
+            thisReaperBody.AddForce(og + (15 * tr.up) + -(10 * tr.forward), ForceMode.VelocityChange);
             Logger.Log(Logger.Level.Debug, $"REELING!");
             if (ar.currentTarget != null)
             {
@@ -360,11 +343,11 @@ namespace FightingReapers
                 Vector3 position = collider2.ClosestPointOnBounds(this.mouth.transform.position * 3f);
                 Animation anim = new Animation();
 
-                SafeAnimator.SetBool(creature.GetAnimator(), "attacking", true);
-                this.animator.SetBool(MeleeAttack.biteAnimID, true);
-                anim["attacking"].speed = 10f;
+                //SafeAnimator.SetBool(creature.GetAnimator(), "seamoth_attack", this.IsHoldingShark());
+                //this.animator.SetBool(MeleeAttack.biteAnimID, true);
+                //anim["attacking"].speed = 10f;
 
-                liveMixin.TakeDamage(1200, reaperMouth * 1.5f, DamageType.Normal, null);
+                //liveMixin.TakeDamage(1200, reaperMouth * 1.5f, DamageType.Normal, null);
 
                 if (this.damageFX != null)
                 {
