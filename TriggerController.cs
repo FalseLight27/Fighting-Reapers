@@ -59,7 +59,7 @@ namespace FightingReapers
 
                     if (enemyLiveMixin.health == 0 && rootEco == EcoTargetType.Leviathan)
                     {
-                        fb.Bleed(other, bleedPoint);
+                        fb.Bleed(other, bleedPoint, 11f, 8f, 2f);
                     }
 
                 }

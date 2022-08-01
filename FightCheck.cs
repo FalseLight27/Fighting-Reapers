@@ -46,7 +46,7 @@ namespace FightingReapers
 
             Logger.Log(Logger.Level.Info, "SEEK INITIAL CHECK 2 PASSED");
 
-            
+            fb.targetReaper = ar.Search();
 
             Logger.Log(Logger.Level.Info, "SEEK INITIAL CHECK 3 PASSED");
 
@@ -122,7 +122,7 @@ namespace FightingReapers
             {
                 
                 fb.targetFound = true;
-                fb.targetDist = Vector3.Distance(__instance.transform.position, fb.targetReaper.transform.position);
+                //fb.targetDist = Vector3.Distance(__instance.transform.position, fb.targetReaper.transform.position);
                 __instance.Aggression.Add(UnityEngine.Random.Range(0.31f, 0.51f));
 
                 if (Time.time > fb.nextTarget)
@@ -204,7 +204,7 @@ namespace FightingReapers
                     if (Time.time > fb.nextNotif)
                     {
                         fb.nextNotif = Time.time + fb.notifRate;
-                        //Logger.Log(Logger.Level.Debug, $"ENEMY REAPER IS : {fb.targetDist} AWAY FROM ME");
+                        Logger.Log(Logger.Level.Debug, $"ENEMY REAPER IS : {fb.targetDist} AWAY FROM ME");
                     }
                 }
             }
@@ -214,11 +214,12 @@ namespace FightingReapers
                                 
                 if (Time.time > fb.nextNotif)
                 {
-                    fb.targetReaper = ar.Search();
+                    
                     fb.nextNotif = Time.time + fb.notifRate;
                     Logger.Log(Logger.Level.Debug, $"NO ENEMY REAPERS IN VICINITY");
                     ErrorMessage.AddMessage($"NO ENEMY REAPERS IN VICINITY");
                 }
+                
                 ar.StopPerform(__instance);
                 Logger.Log(Logger.Level.Info, "SEEK_ENEMY_REAPERS PASSED CHECK 7");
             }

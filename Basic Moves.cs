@@ -12,23 +12,30 @@ using Logger = QModManager.Utility.Logger;
 
 namespace FightingReapers
 {
-    public class BasicFightingMoves : ReaperMeleeAttack        
+    public class BasicFightingMoves : ReaperMeleeAttack
     {
-        
+
         public static BasicFightingMoves main;
         internal Collider collider2;
         public Vector3 reaperMouth;
-        public new float biteDamage = 100f;        
-        private BehaviourType bt;        
+        public new float biteDamage = 100f;
+        private BehaviourType bt;
         public LiveMixin enemyLiveMixin;
         public float timeToUnfreeze = 0f;
         public float freezeCD = 2f;
         public Animation anim;
         public GameObject prefab;
-        public GameObject prefab2;        
-        
-        
-        /*
+        public GameObject prefab2;
+
+        public float timeObjGrabbed;
+        public float timeObjReleased;
+        public Quaternion ObjInitialRotation;
+        public Vector3 ObjInitialPosition;
+
+        public float creatureDPS = 44f;
+
+
+
         public override float GetBiteDamage(GameObject target)
         {
             var fb = GetComponentInParent<FightBehavior>();
@@ -48,7 +55,7 @@ namespace FightingReapers
             return base.GetBiteDamage(target);
         }
 
-        */
+
 
         /*
         private void StartSetAnimParam(string paramName, float duration)
@@ -65,28 +72,28 @@ namespace FightingReapers
 
         */
 
-        
+
 
         public void Claw()
-        {            
+        {
             var fb = this.GetComponentInParent<FightBehavior>();
-            
+
             var thisReaper = this.GetComponentInParent<ReaperLeviathan>();
-            
 
-            //SafeAnimator.SetBool(thisReaper.GetAnimator(), "attacking", true);
-            //thisReaper.GetAnimator().speed = 1.3f;
 
-            
+            SafeAnimator.SetBool(thisReaper.GetAnimator(), "attacking", true);
+            thisReaper.GetAnimator().speed = 1.6f;
 
-            if (thisReaper.Aggression.Value < 500f)
+
+
+            if (thisReaper.Aggression.Value < 0.5f)
             {
-                thisReaper.Aggression.Value = 500f;                
+                thisReaper.Aggression.Value *= 5f;
             }
 
             fb.isClawing = true;
             //thisReaper.Tired.Add(0.035f);
-            
+
             Logger.Log(Logger.Level.Info, "CLAW PASSED CHECK 1");
 
             /*
@@ -147,26 +154,26 @@ namespace FightingReapers
 
 
 
-            
+
             ErrorMessage.AddMessage($"CLAW ATTACK!");
         }
-        
+
         public void StopClaw()
         {
             var fb = this.GetComponentInParent<FightBehavior>();
             var rm = this.GetComponentInParent<ReaperMeleeAttack>();
             var thisReaper = this.GetComponentInParent<ReaperLeviathan>();
-            
+
 
             SafeAnimator.SetBool(thisReaper.GetAnimator(), "attacking", false);
             thisReaper.GetAnimator().speed = 1f;
             thisReaper.Aggression.Value *= 0.5f;
             fb.isClawing = false;
 
-            
-                ErrorMessage.AddMessage($"NOT CLAWING");
-            
-            
+
+            ErrorMessage.AddMessage($"NOT CLAWING");
+
+
         }
 
         internal void FreezeRotation()
@@ -180,7 +187,7 @@ namespace FightingReapers
 
             }
 
-            StartCoroutine(FreezeForSeconds());            
+            StartCoroutine(FreezeForSeconds());
         }
 
         public void Twist()
@@ -191,23 +198,23 @@ namespace FightingReapers
             var thisReaper = this.GetComponentInParent<ReaperLeviathan>();
 
             int directionChoose = UnityEngine.Random.Range(1, 3);
-            
+
 
             switch (directionChoose)
             {
                 //Roll right
-                case 1: 
-                    thisReaperBody.AddTorque(thisReaperBody.transform.forward * 4.5f, ForceMode.VelocityChange);
+                case 1:
+                    thisReaperBody.AddTorque(thisReaperBody.transform.forward * 3.5f, ForceMode.VelocityChange);
                     Invoke("FreezeRotation", 2.5f);
                     break;
 
                 //Roll left
                 case 2:
-                    thisReaperBody.AddTorque(thisReaperBody.transform.forward * -4.5f, ForceMode.VelocityChange);
+                    thisReaperBody.AddTorque(thisReaperBody.transform.forward * -3.5f, ForceMode.VelocityChange);
                     Invoke("FreezeRotation", 2.5f);
                     break;
-            }           
-                        
+            }
+
             Logger.Log(Logger.Level.Debug, $"TWIST ROTATION: {thisReaperBody.rotation}");
         }
 
@@ -221,13 +228,13 @@ namespace FightingReapers
 
             if (creature.Tired.Value < 0.90f)
             {
-                thisReaperBody.AddForce(rm.mouth.transform.forward * 30f, ForceMode.VelocityChange);
+                thisReaperBody.AddForce(Vector3.Normalize(rm.mouth.transform.position - fb.targetReaper.transform.position) * 30f, ForceMode.VelocityChange);
             }
             else if (creature.Tired.Value >= 0.90f)
             {
-                thisReaperBody.AddForce(rm.mouth.transform.forward * 20f, ForceMode.VelocityChange);
-            }            
-            
+                thisReaperBody.AddForce(Vector3.Normalize(rm.mouth.transform.position - fb.targetReaper.transform.position) * 20f, ForceMode.VelocityChange);
+            }
+
             Logger.Log(Logger.Level.Debug, $"LUNGING AT {thisReaperBody.velocity.magnitude} M/S");
 
         }
@@ -255,7 +262,7 @@ namespace FightingReapers
             else if (creature.Tired.Value >= 0.90f)
             {
                 //swim.SwimTo(position, 15f);
-                thisReaperBody.AddForce((rm.mouth.transform.forward * 20f) + (rm.mouth.transform.right * UnityEngine.Random.Range(-12f,12f)), ForceMode.VelocityChange);
+                thisReaperBody.AddForce((rm.mouth.transform.forward * 20f) + (rm.mouth.transform.right * UnityEngine.Random.Range(-12f, 12f)), ForceMode.VelocityChange);
                 Logger.Log(Logger.Level.Debug, $"PUSH PASSED CHECK 3");
             }
 
@@ -274,7 +281,7 @@ namespace FightingReapers
             var tr = rm.mouth.transform;
             var og = rm.mouth.transform.forward;
 
-            thisReaperBody.AddForce(og + (15 * tr.up) + -(10 * tr.forward), ForceMode.VelocityChange);
+            thisReaperBody.AddForce(og + (10 * tr.up) + -(7 * tr.forward), ForceMode.VelocityChange);
             Logger.Log(Logger.Level.Debug, $"REELING!");
             if (ar.currentTarget != null)
             {
@@ -288,8 +295,8 @@ namespace FightingReapers
         public void Tackle()
         {
 
-            var fb = this.GetComponentInParent<FightBehavior>();            
-            
+            var fb = this.GetComponentInParent<FightBehavior>();
+
             var thisReaper = this.GetComponentInParent<ReaperLeviathan>();
 
             var thisReaperBody = this.GetComponentInParent<Rigidbody>();
@@ -305,7 +312,7 @@ namespace FightingReapers
             {
                 Vector3 position = hit.collider.ClosestPointOnBounds(this.mouth.transform.up);
                 Rigidbody hitBody = hit.collider.GetComponentInParent<Rigidbody>();
-                
+
                 LiveMixin enemyLiveMixin = hit.collider.GetComponentInParent<LiveMixin>();
 
                 if (velocity > 70f)
@@ -318,7 +325,7 @@ namespace FightingReapers
 
                     if (enemyLiveMixin)
                     {
-                        enemyLiveMixin.TakeDamage(velocity/2, position, DamageType.Collide, thisReaper.gameObject);
+                        enemyLiveMixin.TakeDamage(velocity / 2, position, DamageType.Collide, thisReaper.gameObject);
                         UnityEngine.Object.Instantiate(enemyLiveMixin.damageEffect, position, Quaternion.identity);
                     }
 
@@ -331,35 +338,196 @@ namespace FightingReapers
 
         }
 
-        public void Reap()
+        // PREY GRABBING BEHAVIOR
+
+        public void ReleaseObject()
+        {
+            var fb = this.GetComponent<FightBehavior>();
+
+            if (fb.holdingObject != null)
+            {
+
+                fb.holdingObject.GetComponent<Rigidbody>().isKinematic = false;
+                //fb.holdingObject.collisionModel.SetActive(true);
+                fb.holdingObject = null;
+                timeObjReleased = Time.time;
+            }
+            fb.holdingEcoType = EcoTargetType.None;
+            base.CancelInvoke("DamageVehicle");
+            //this.seamothGrabSound.Stop();
+        }
+
+        // Token: 0x06000944 RID: 2372 RVA: 0x00039814 File Offset: 0x00037A14
+        private void DamageObject()
+        {
+            var fb = this.GetComponent<FightBehavior>();
+
+            if (fb.holdingObject != null)
+            {
+                var liveMixin = fb.holdingObject.GetComponent<LiveMixin>();
+
+                liveMixin.TakeDamage(creatureDPS, default(Vector3), DamageType.Drill, null);
+            }
+        }
+
+        public void GrabObject(GameObject grabobj)
+
+        {
+            var fb = this.GetComponent<FightBehavior>();
+            var eco = grabobj.GetComponent<EcoTarget>();
+
+
+            bool isReefBack = grabobj.GetComponent<Reefback>();
+
+            grabobj.GetComponent<Rigidbody>().isKinematic = true;
+
+            //vehicle.collisionModel.SetActive(false);
+
+            fb.holdingObject = grabobj;
+            fb.holdingEcoType = eco.GetTargetType();
+
+            //this.Aggression.Value = 0f;
+
+
+
+            this.timeObjGrabbed = Time.time;
+            this.ObjInitialRotation = grabobj.transform.rotation;
+            this.ObjInitialPosition = grabobj.transform.position;
+
+            /*
+
+            this.seamothGrabSound.Play();
+
+            
+            base.Invoke("ReleaseVehicle", 8f + UnityEngine.Random.value * 5f);
+
+            */
+
+            if ((fb.holdingEcoType == EcoTargetType.Shark || fb.holdingEcoType == EcoTargetType.Whale) && !isReefBack)
+
+            {
+                Reap(grabobj);
+            }
+
+
+        }
+
+        public bool IsHoldingObj()
+        {
+            var fb = this.GetComponent<FightBehavior>();
+
+            return fb.holdingObject != null;
+        }
+
+        public void Reap(GameObject prey)
         {
 
             var fb = this.GetComponent<FightBehavior>();
             var rm = this.GetComponentInParent<ReaperMeleeAttack>();
+            var rl = this.GetComponentInParent<ReaperLeviathan>();
 
-            if (!Player.main)
+            var creature = this.GetComponentInParent<Creature>();
+            var preyCreature = prey.GetComponent<Creature>();
+
+            /*
+
+            if (prey.EcoTargetType && this.holdingVehicle == null)
             {
+                this.ReleaseVehicle();
+            }
 
-                Vector3 position = collider2.ClosestPointOnBounds(this.mouth.transform.position * 3f);
-                Animation anim = new Animation();
+            */
 
-                //SafeAnimator.SetBool(creature.GetAnimator(), "seamoth_attack", this.IsHoldingShark());
-                //this.animator.SetBool(MeleeAttack.biteAnimID, true);
-                //anim["attacking"].speed = 10f;
 
-                //liveMixin.TakeDamage(1200, reaperMouth * 1.5f, DamageType.Normal, null);
 
-                if (this.damageFX != null)
+            //SafeAnimator.SetBool(base.GetAnimator(), "exo_attack", this.IsHoldingExosuit());
+
+            base.InvokeRepeating("DamageObject", 1f, 1f);
+
+        }
+
+        
+
+        [HarmonyPatch(typeof(ReaperLeviathan))]
+        [HarmonyPatch("OnTakeDamage", new Type[] { typeof(DamageInfo) })]
+
+        public class ReleaseObjectPatch
+        {
+            [HarmonyPostfix]
+
+            public static void ReleaseObjPatch(ReaperLeviathan __instance, DamageInfo damageInfo)
+            {
+                var fb = __instance.GetComponentInParent<FightBehavior>();
+                var bm = __instance.GetComponentInParent<BasicFightingMoves>();
+
+                if ((damageInfo.type == DamageType.Electrical || damageInfo.type == DamageType.Poison) && fb.holdingObject != null)
                 {
-                    UnityEngine.Object.Instantiate<GameObject>(this.damageFX, position, this.damageFX.transform.rotation);
-                    this.damageFX.transform.localScale = new Vector3(20f, 20f, 20f);
-                }
-                if (this.attackSound != null)
-                {
-                    global::Utils.PlayEnvSound(this.attackSound, position, 20f);
+                    bm.ReleaseObject();
                 }
             }
-            
         }
-    }
+
+        [HarmonyPatch(typeof(ReaperLeviathan))]
+        [HarmonyPatch("Update")]
+        public class HoldObjUpdate
+        {
+            [HarmonyPostfix]
+
+            public static void UpdateHoldObj(ReaperLeviathan __instance)
+            {
+                var fb = __instance.GetComponentInParent<FightBehavior>();
+                var bm = __instance.GetComponentInParent<BasicFightingMoves>();
+                var al = __instance.GetComponentInParent<AttackLastTarget>();
+                
+                
+
+                if (al.currentTarget != null)
+
+                {
+
+                    
+                    var eco = al.currentTarget.GetComponent<EcoTarget>();
+
+
+                    bool isReefBack = al.currentTarget.GetComponent<Reefback>();
+
+                    al.currentTarget.GetComponent<Rigidbody>().isKinematic = true;
+
+                    //vehicle.collisionModel.SetActive(false);
+
+                    //fb.holdingObject = grabobj;
+                    var ecoType = eco.GetTargetType();
+
+                    float distToHoldTarget = Vector3.Distance(__instance.transform.position, al.currentTarget.transform.position);
+
+                    
+
+                    if (distToHoldTarget < 2f && (ecoType == EcoTargetType.Shark || ecoType == EcoTargetType.Whale) && !isReefBack)
+                    {
+                        bm.GrabObject(al.currentTarget);
+                    }
+
+                }
+
+                
+
+                if (fb.holdingObject != null)
+                {
+                    SafeAnimator.SetBool(__instance.GetAnimator(), "seamoth_attack", bm.IsHoldingObj());
+
+                    float num = Mathf.Clamp01(Time.time - bm.timeObjGrabbed);
+                    if (num >= 1f)
+                    {
+                        fb.holdingObject.transform.position = __instance.seamothAttachPoint.position;
+                        fb.holdingObject.transform.rotation = __instance.seamothAttachPoint.transform.rotation;
+                        return;
+                    }
+                    fb.holdingObject.transform.position = (__instance.seamothAttachPoint.position - bm.ObjInitialPosition) * num + __instance.vehicleInitialPosition;
+                    fb.holdingObject.transform.rotation = Quaternion.Lerp(bm.ObjInitialRotation, __instance.seamothAttachPoint.transform.rotation, num);
+                }
+            }
+
+        }
+
+}
 }

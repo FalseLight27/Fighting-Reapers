@@ -12,8 +12,8 @@ namespace FightingReapers
     public class FightBehavior : MonoBehaviour
     {
 
-        public Creature holdingEnemy;
-        public EnemyType holdingEnemyType;
+        public GameObject holdingObject;
+        
         public Transform grabPoint;
 
         public Vector3 enemyInitialPosition;
@@ -24,21 +24,26 @@ namespace FightingReapers
         public GameObject targetObj;
         public GameObject targetReaper;
 
+        public EcoTargetType holdingEcoType;
+
         public bool targetFound;
         public bool isClawing;
         public bool canPush;
         public bool clawsBusy;
         public bool canClaw;
 
-        public float targetDist;
-        public float biteDist;
-        public float timeEnemyGrabbed;
-        public float nextNotif = 0.1f;
-        public float notifRate = 4f;
-        public float curiosityUpdateRate = 2.2f;
         public float moveChance;
         public float attackChance;
         public float critChance;
+
+        public float targetDist;
+        public float biteDist;
+        public float timeEnemyGrabbed;
+        
+        public float notifRate = 4f;
+        public float curiosityUpdateRate = 2.2f;
+
+        public float nextNotif = 0.0f;
         public float nextMove = 0.0f;
         public float nextPush = 0.0f;
         public float nextAttack = 0.0f;
@@ -47,10 +52,11 @@ namespace FightingReapers
         public float randomCooldown;
         public float targetCD = 0.5f;
         public float attackCD;
+
         public GameObject bloodPrefab;
         internal GameObject CachedBloodPrefab;
-        public float lifetimeScale = 10f;
-        public float startSizeScale = 2f;
+        public float lifetimeScale = 12f;
+        public float startSizeScale = 7f;
         public float colorScale = 2f;
 
         public Transform mouth;
@@ -94,17 +100,9 @@ namespace FightingReapers
         }
 
 
-        public enum EnemyType
-        {
-            None,
+        
 
-            ReaperLeviathan,
-
-            GhostLeviathan
-
-        }
-
-        public void BloodGen(Collider target)
+        public void BloodGen(Collider target, float lifeTime, float lifeTimeScale, float startSizeScale)
         {
 
             
@@ -145,7 +143,7 @@ namespace FightingReapers
 
 
 
-                main.startLifetime = new ParticleSystem.MinMaxCurve(main.startLifetime.constant * lifetimeScale);
+                main.startLifetime = new ParticleSystem.MinMaxCurve(main.startLifetime.constant * lifeTimeScale);
                 main.startSize = new ParticleSystem.MinMaxCurve(main.startSize.constant * startSizeScale);
 
                 Gradient grad = new Gradient();
@@ -156,10 +154,11 @@ namespace FightingReapers
 
 
             }
-            //VFXDestroyAfterSeconds destroyAfterSeconds = CachedBloodPrefab.GetComponent<VFXDestroyAfterSeconds>();
-            //Destroy(destroyAfterSeconds);
+            VFXDestroyAfterSeconds destroyAfterSeconds = CachedBloodPrefab.GetComponent<VFXDestroyAfterSeconds>();
+            destroyAfterSeconds.lifeTime = lifeTime;
+            Destroy(destroyAfterSeconds);
 
-            Destroy(bloodPrefab, 11f);
+            //Destroy(bloodPrefab, 11f);
         }
         /*
         IEnumerator BloodFade(GameObject go)
@@ -215,17 +214,54 @@ namespace FightingReapers
 
         */
 
-        public void Bleed(Collider collider, Vector3 bleedPoint)
+        public IEnumerator Bleed(Collider collider, Vector3 bleedPoint, float lifeTime, float lifeTimeScale, float startSizeScale)
 
         {
-                BloodGen(collider);
+            BloodGen(collider, lifeTime, lifeTimeScale, startSizeScale);
 
-                GameObject blood1 = Instantiate(CachedBloodPrefab, bleedPoint, Quaternion.identity);
+            GameObject blood1 = Instantiate(CachedBloodPrefab, bleedPoint, Quaternion.identity);
+            blood1.SetActive(true);
+                
+            yield return new WaitForSeconds(0.5f);
+            BloodGen(collider, lifeTime, lifeTimeScale/2, startSizeScale/2);
+            GameObject blood2 = Instantiate(CachedBloodPrefab, bleedPoint, Quaternion.identity);
+            blood2.SetActive(true);
 
-                blood1.SetActive(true);
+            yield return new WaitForSeconds(0.5f);
+            BloodGen(collider, lifeTime, lifeTimeScale / 2, startSizeScale / 2);
+            GameObject blood3 = Instantiate(CachedBloodPrefab, bleedPoint, Quaternion.identity);
+            blood3.SetActive(true);
 
-                //CoroutineHost.StartCoroutine(BloodFade(blood1));
+            yield return new WaitForSeconds(0.5f);
+            BloodGen(collider, lifeTime, lifeTimeScale / 2, startSizeScale / 2);
+            GameObject blood4 = Instantiate(CachedBloodPrefab, bleedPoint, Quaternion.identity);
+            blood4.SetActive(true);
+
+            yield return new WaitForSeconds(0.5f);
+            BloodGen(collider, lifeTime, lifeTimeScale / 2, startSizeScale / 2);
+            GameObject blood5 = Instantiate(CachedBloodPrefab, bleedPoint, Quaternion.identity);
+            blood5.SetActive(true);
+
+            yield return new WaitForSeconds(0.5f);
+            BloodGen(collider, lifeTime, lifeTimeScale / 2, startSizeScale / 2);
+            GameObject blood6 = Instantiate(CachedBloodPrefab, bleedPoint, Quaternion.identity);
+            blood6.SetActive(true);
+
+            yield return new WaitForSeconds(0.5f);
+            BloodGen(collider, lifeTime, lifeTimeScale / 2, startSizeScale / 2);
+            GameObject blood7 = Instantiate(CachedBloodPrefab, bleedPoint, Quaternion.identity);
+            blood7.SetActive(true);
+
+            yield return new WaitForSeconds(0.5f);
+            BloodGen(collider, lifeTime, lifeTimeScale / 2, startSizeScale / 2);
+            GameObject blood8 = Instantiate(CachedBloodPrefab, bleedPoint, Quaternion.identity);
+            blood8.SetActive(true);
+
+            //CoroutineHost.StartCoroutine(BloodFade(blood1));
         }
+
+        
+        
 
 
         public static FMODAsset GetFmodAsset(string audioPath)
@@ -399,31 +435,17 @@ namespace FightingReapers
             {
 
                 var animator = creature.GetComponentInChildren<Animator>();
+                animator.speed = 0.8f;
+                yield return new WaitForSeconds(1f);
+                animator.speed = 0.6f;
+                yield return new WaitForSeconds(1f);
+                animator.speed = 0.4f;
+                yield return new WaitForSeconds(1f);
+                animator.speed = 1f;
+                yield return new WaitForSeconds(1f);
                 animator.speed = 0.5f;
                 yield return new WaitForSeconds(1f);
-                animator.speed = UnityEngine.Random.Range(0f,1f);
-                yield return new WaitForSeconds(1f);
-                animator.speed = UnityEngine.Random.Range(0f, 1f);
-                yield return new WaitForSeconds(1f);
-                animator.speed = 2f;
-                yield return new WaitForSeconds(1f);
-                animator.speed = UnityEngine.Random.Range(0f, 1f);
-                yield return new WaitForSeconds(1f);
-                animator.speed = 2f;
-                yield return new WaitForSeconds(1f);
-                animator.speed = UnityEngine.Random.Range(0f, 1f);
-                yield return new WaitForSeconds(1f);
-                animator.speed = 1.6f;
-                yield return new WaitForSeconds(3f);
-                animator.speed = UnityEngine.Random.Range(0.8f, 1.4f);
-                yield return new WaitForSeconds(3f);
-                animator.speed = 1.8f;
-                yield return new WaitForSeconds(6f);
-                animator.speed = 1.6f;
-                yield return new WaitForSeconds(7f);
-                animator.speed = 0.8f;
-
-
+                animator.speed = 0.2f;
             }
 
             if (isReaper)
@@ -526,7 +548,7 @@ namespace FightingReapers
 
                 {
 
-                    fb.Bleed(collider, damageInfo.position); 
+                    fb.Bleed(collider, damageInfo.position, 11f, 8f, 2f); 
 
 
                     Logger.Log(Logger.Level.Info, "CLAW PASSED CHECK 3");
@@ -552,7 +574,7 @@ namespace FightingReapers
                         {
                             timeBleedAgain = Time.time + bleedInterval;
                             Vector3 position = __instance.transform.InverseTransformPoint(damageInfo.position);
-                            fb.BloodGen(collider);
+                            fb.Bleed(collider, damageInfo.position, 11f, 8f, 2f);
                             GameObject blood = UnityEngine.Object.Instantiate(fb.CachedBloodPrefab, position, Quaternion.identity);
                             blood.SetActive(true);
                             UnityEngine.Object.Destroy(blood, 10f);

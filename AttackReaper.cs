@@ -11,18 +11,18 @@ using Logger = QModManager.Utility.Logger;
 
 namespace FightingReapers
 {
-    public class AttackReaper : CreatureAction
+    public class AttackReaper : AttackCyclops
     {
-		public LastTarget lastTarget;
-		private float maxDistToLeash = 100f;
-		public float swimVelocity = 10f;		
-		private float swimInterval = 0.3f;
-		public float timeLastAttack;
-		public CreatureTrait aggressiveToNoise;
-		private bool isActive;
-		internal GameObject currentTarget;		
-		private bool currentTargetIsDecoy;
-		private Vector3 targetAttackPoint;
+		//public LastTarget lastTarget;
+		//private float maxDistToLeash = 100f;
+		//public float swimVelocity = 10f;		
+		//private float swimInterval = 0.3f;
+		//public float timeLastAttack;
+		//public CreatureTrait aggressiveToNoise;
+		//private bool isActive;
+		//internal GameObject currentTarget;		
+		//private bool currentTargetIsDecoy;
+		//private Vector3 targetAttackPoint;
 		public float scratchTimer = 0f;
 		public bool startTimer = false;
 		public Vector3 dir;
@@ -110,12 +110,12 @@ namespace FightingReapers
 							  rootObject.GetComponent<ReaperLeviathan>() ||
 							  rootObject.GetComponent<SeaDragon>();
 
-				if (isLeviathan)
+				if (isLeviathan && dist < 300)
 				{
 					ErrorMessage.AddMessage("ENEMY VISIBLE");
 					return seeObject;
 				}
-				else if (isBase)
+				else if (isBase && dist < 300)
 				{
 					ErrorMessage.AddMessage("BASE VISIBLE");
 					return null;
@@ -197,8 +197,9 @@ namespace FightingReapers
 			var loco = creature.GetComponent<Locomotion>();
 			var thisReaper = creature;
 
-			float detectRange = 300f;
-			float distFromTarget;
+			float detectRange = 6000f;
+			float potentialTargetDist;
+			
 			//If the Reaper can see the enemy leviathan, or if the enemy leviathan is within 100m of the Reaper, it will become the designated target.  
 
 			Logger.Log(Logger.Level.Info, "SEARCH PASSED CHECK 1");
@@ -208,47 +209,65 @@ namespace FightingReapers
 			var potentialLiveMixin = potentialObj.GetComponent<LiveMixin>();
 			var potentialRigid = potentialObj.GetComponent<Rigidbody>();
 
-
+			Logger.Log(Logger.Level.Info, "SEARCH PASSED CHECK 1.1");
 
 			if (potentialtarget != null && potentialLiveMixin.health > 0)
 			{
 				currentTarget = SeeEnemy(potentialObj);
 
-				distFromTarget = Vector3.Distance(potentialObj.transform.position, creature.transform.position);
+				potentialTargetDist = Vector3.Distance(potentialObj.transform.position, creature.transform.position);
 
-				if (distFromTarget < detectRange)
+				if (potentialTargetDist < detectRange)
 				{
 					if (Time.time > fb.nextCuriosityUpdate)
 					{
 						fb.nextCuriosityUpdate = Time.time + fb.curiosityUpdateRate;
-						creature.Curiosity.Add(((potentialRigid.velocity.magnitude / distFromTarget) * 100f) + (10f * (1/distFromTarget)));
+						creature.Curiosity.Add((((potentialRigid.velocity.magnitude * potentialRigid.mass)/ (potentialTargetDist*10000))) + ((0.1f/ potentialTargetDist)));
 					}
 
-								if (10f < creature.Curiosity.Value  && creature.Curiosity.Value <= 20f)
+					Logger.Log(Logger.Level.Info, "SEARCH PASSED CHECK 1.2");
+
+								if (creature.Curiosity.Value > 0.10f)
 								{
 									AssessThreat(potentialObj.transform);
 									ErrorMessage.AddMessage($"ASSESSING THREAT. CURIOSITY IS AT {creature.Curiosity.Value}");
 								}
 
-								else if (20f < creature.Curiosity.Value && creature.Curiosity.Value <= 30f)
+								if (creature.Curiosity.Value > 0.20f && creature.Curiosity.Value <= 0.30f)
 								{
 									//Reaper will try to approach curious object and investigate
 									swim.SwimTo(potentialObj.transform.position, this.swimVelocity);
 								}
 
-								else if (30f < creature.Curiosity.Value && creature.Curiosity.Value <= 40f)
+								else if (creature.Curiosity.Value > 0.30f)
 								{
 									//Reaper will try to pursue curious object further
 									swim.SwimTo(potentialObj.transform.position, this.swimVelocity*3);
 								}
 
 				}
-				
-				
-				ErrorMessage.AddMessage("CLOSEST LEVIATHAN ACQUIRED");
+
+				Logger.Log(Logger.Level.Info, "SEARCH PASSED CHECK 1.3");
+
+				if (potentialTargetDist > detectRange)
+
+                {
+					if (Time.time > fb.nextCuriosityUpdate)
+					{
+						fb.nextCuriosityUpdate = Time.time + fb.curiosityUpdateRate;
+						creature.Curiosity.Add(-0.05f);
+					}
+				}
+
+
+					ErrorMessage.AddMessage("CLOSEST LEVIATHAN ACQUIRED");
 			}
 
-			
+			else if (potentialtarget == null)
+
+            {
+				return null;
+            }
 			
 
 			Logger.Log(Logger.Level.Info, "SEARCH PASSED CHECK 2");
@@ -302,7 +321,7 @@ namespace FightingReapers
 		public override void StopPerform(Creature creature)
 		{
 			SafeAnimator.SetBool(creature.GetAnimator(), "attacking", false);
-			this.currentTarget = null;
+			//this.currentTarget = null;
 			/*this.lastTarget.UnlockTarget();
 			this.lastTarget.target = null;
 			this.isActive = false;
