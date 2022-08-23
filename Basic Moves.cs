@@ -82,13 +82,21 @@ namespace FightingReapers
 
 
             SafeAnimator.SetBool(thisReaper.GetAnimator(), "attacking", true);
-            thisReaper.GetAnimator().speed = 1.6f;
+            thisReaper.GetAnimator().speed = 1.8f;
 
-
+            /*
 
             if (thisReaper.Aggression.Value < 0.5f)
             {
-                thisReaper.Aggression.Value *= 5f;
+                thisReaper.Aggression.Value += 5f;
+            }
+
+            */
+
+            if (fb.targetDist < 10f && fb.targetDist >= 0)
+
+            {
+                thisReaper.GetAnimator().speed *= 2f;
             }
 
             fb.isClawing = true;
@@ -228,11 +236,11 @@ namespace FightingReapers
 
             if (creature.Tired.Value < 0.90f)
             {
-                thisReaperBody.AddForce(Vector3.Normalize(rm.mouth.transform.position - fb.targetReaper.transform.position) * 30f, ForceMode.VelocityChange);
+                thisReaperBody.AddForce(Vector3.Normalize(rm.mouth.transform.position - fb.targetReaper.transform.position) * 45f, ForceMode.VelocityChange);
             }
             else if (creature.Tired.Value >= 0.90f)
             {
-                thisReaperBody.AddForce(Vector3.Normalize(rm.mouth.transform.position - fb.targetReaper.transform.position) * 20f, ForceMode.VelocityChange);
+                thisReaperBody.AddForce(Vector3.Normalize(rm.mouth.transform.position - fb.targetReaper.transform.position) * 30f, ForceMode.VelocityChange);
             }
 
             Logger.Log(Logger.Level.Debug, $"LUNGING AT {thisReaperBody.velocity.magnitude} M/S");
@@ -256,13 +264,13 @@ namespace FightingReapers
             if (creature.Tired.Value < 0.90f)
             {
                 //swim.SwimTo(position, 25f);
-                thisReaperBody.AddForce((rm.mouth.transform.forward * 30f) + (rm.mouth.transform.right * UnityEngine.Random.Range(-20f, 20f)), ForceMode.VelocityChange);
+                thisReaperBody.AddForce((rm.mouth.transform.forward * 40f) + (rm.mouth.transform.right * UnityEngine.Random.Range(-20f, 20f)), ForceMode.VelocityChange);
                 Logger.Log(Logger.Level.Debug, $"PUSH PASSED CHECK 2");
             }
             else if (creature.Tired.Value >= 0.90f)
             {
                 //swim.SwimTo(position, 15f);
-                thisReaperBody.AddForce((rm.mouth.transform.forward * 20f) + (rm.mouth.transform.right * UnityEngine.Random.Range(-12f, 12f)), ForceMode.VelocityChange);
+                thisReaperBody.AddForce((rm.mouth.transform.forward * 30f) + (rm.mouth.transform.right * UnityEngine.Random.Range(-12f, 12f)), ForceMode.VelocityChange);
                 Logger.Log(Logger.Level.Debug, $"PUSH PASSED CHECK 3");
             }
 
@@ -271,29 +279,33 @@ namespace FightingReapers
         }
 
 
-        public void Reel()
+        public IEnumerator Reel()
         {
             var fb = this.GetComponent<FightBehavior>();
             var ar = this.GetComponentInParent<AttackReaper>();
+            var thisCreature = this.GetComponentInParent<Creature>();
             var thisReaper = this.GetComponentInParent<ReaperLeviathan>();
             var thisReaperBody = this.GetComponentInParent<Rigidbody>();
             var rm = this.GetComponentInParent<ReaperMeleeAttack>();
             var tr = rm.mouth.transform;
             var og = rm.mouth.transform.forward;
 
-            thisReaperBody.AddForce(og + (10 * tr.up) + -(7 * tr.forward), ForceMode.VelocityChange);
-            Logger.Log(Logger.Level.Debug, $"REELING!");
+            thisReaperBody.AddForce(og + (9 * tr.up) + -(7 * tr.forward), ForceMode.VelocityChange);
+            
             if (ar.currentTarget != null)
             {
-                Invoke("Lunge", 1.5f);
+                yield return new WaitForSeconds(1f);
+                Lunge(thisCreature);
             }
-
-
+            Logger.Log(Logger.Level.Debug, $"REELING!");
+            yield break;
         }
 
 
         public void Tackle()
         {
+
+            //(NON-FUNCTIONAL. This method is meant to make the reaper do a ramming move with its horn)
 
             var fb = this.GetComponentInParent<FightBehavior>();
 
@@ -338,7 +350,7 @@ namespace FightingReapers
 
         }
 
-        // PREY GRABBING BEHAVIOR
+        // --------------------------------------PREY GRABBING BEHAVIOR (WIP!)-------------------------------------------\\
 
         public void ReleaseObject()
         {
@@ -442,7 +454,7 @@ namespace FightingReapers
 
             //SafeAnimator.SetBool(base.GetAnimator(), "exo_attack", this.IsHoldingExosuit());
 
-            base.InvokeRepeating("DamageObject", 1f, 1f);
+            InvokeRepeating("DamageObject", 1f, 1f);
 
         }
 
@@ -487,22 +499,22 @@ namespace FightingReapers
 
                     
                     var eco = al.currentTarget.GetComponent<EcoTarget>();
-
+                    var ecoType = eco.GetTargetType();
 
                     bool isReefBack = al.currentTarget.GetComponent<Reefback>();
 
-                    al.currentTarget.GetComponent<Rigidbody>().isKinematic = true;
+                    bool isPrey = ecoType == EcoTargetType.Shark || ecoType == EcoTargetType.Whale;
 
                     //vehicle.collisionModel.SetActive(false);
 
                     //fb.holdingObject = grabobj;
-                    var ecoType = eco.GetTargetType();
+                  
 
                     float distToHoldTarget = Vector3.Distance(__instance.transform.position, al.currentTarget.transform.position);
 
                     
 
-                    if (distToHoldTarget < 2f && (ecoType == EcoTargetType.Shark || ecoType == EcoTargetType.Whale) && !isReefBack)
+                    if (distToHoldTarget < 5f && isPrey && !isReefBack)
                     {
                         bm.GrabObject(al.currentTarget);
                     }
@@ -513,6 +525,9 @@ namespace FightingReapers
 
                 if (fb.holdingObject != null)
                 {
+                    bm.StopClaw();
+                    fb.clawsBusy = true;
+
                     SafeAnimator.SetBool(__instance.GetAnimator(), "seamoth_attack", bm.IsHoldingObj());
 
                     float num = Mathf.Clamp01(Time.time - bm.timeObjGrabbed);

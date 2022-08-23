@@ -46,7 +46,7 @@ namespace FightingReapers
 
             Logger.Log(Logger.Level.Info, "SEEK INITIAL CHECK 2 PASSED");
 
-            fb.targetReaper = ar.Search();
+            
 
             Logger.Log(Logger.Level.Info, "SEEK INITIAL CHECK 3 PASSED");
 
@@ -122,19 +122,21 @@ namespace FightingReapers
             {
                 
                 fb.targetFound = true;
-                //fb.targetDist = Vector3.Distance(__instance.transform.position, fb.targetReaper.transform.position);
+                fb.targetDist = Vector3.Distance(__instance.transform.position, fb.targetReaper.transform.position);
                 __instance.Aggression.Add(UnityEngine.Random.Range(0.31f, 0.51f));
 
+                /*
                 if (Time.time > fb.nextTarget)
                 {
                     fb.nextTarget = Time.time + fb.targetCD;
                     ar.DesignateTarget(fb.targetReaper.transform);
 
                 }
+                */
 
-                
+                ar.DesignateTarget(fb.targetReaper.transform);
                 ar.StartPerform(__instance);
-                ar.UpdateAttackPoint();
+                ar.UpdateAttackPoint2();
                 Logger.Log(Logger.Level.Info, "SEEK_ENEMY_REAPERS PASSED CHECK 2");
 
                 if (fb.targetFound == true)
@@ -143,7 +145,7 @@ namespace FightingReapers
 
                     Logger.Log(Logger.Level.Info, "SEEK_ENEMY_REAPERS PASSED CHECK 3");
 
-                    if (__instance.Aggression.Value >= 400f && __instance.Tired.Value < 0.30f && Time.time > fb.nextMove && fb.moveChance > 0.50f)
+                    if (__instance.Aggression.Value >= 0.6f && __instance.Tired.Value < 0.30f && Time.time > fb.nextMove && fb.moveChance > 0.50f)
                     {
                         fb.nextMove = Time.time + fb.randomCooldown;
                         ar.Charge(__instance);
@@ -204,14 +206,15 @@ namespace FightingReapers
                     if (Time.time > fb.nextNotif)
                     {
                         fb.nextNotif = Time.time + fb.notifRate;
-                        Logger.Log(Logger.Level.Debug, $"ENEMY REAPER IS : {fb.targetDist} AWAY FROM ME");
+                        Logger.Log(Logger.Level.Debug, $"ENEMY REAPER IS : {fb.targetDist}M AWAY FROM ME");
                     }
                 }
             }
 
             else if (fb.targetReaper == null)
             {
-                                
+                fb.targetReaper = ar.Search();
+
                 if (Time.time > fb.nextNotif)
                 {
                     
@@ -224,7 +227,7 @@ namespace FightingReapers
                 Logger.Log(Logger.Level.Info, "SEEK_ENEMY_REAPERS PASSED CHECK 7");
             }
                 
-            if (fb.targetDist < 20f)
+            if (ar.SenseClawable() && !fb.clawsBusy)
             {
                 ErrorMessage.AddMessage("CLAWS READY");
 
@@ -250,7 +253,7 @@ namespace FightingReapers
 
             }
 
-            else if (fb.targetDist > 20f)
+            else if (!ar.SenseClawable())
             {
                 ErrorMessage.AddMessage("CANNOT CLAW");
                 Logger.Log(Logger.Level.Info, "CANNOT CLAW");

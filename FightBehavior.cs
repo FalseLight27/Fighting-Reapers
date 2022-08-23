@@ -53,10 +53,13 @@ namespace FightingReapers
         public float targetCD = 0.5f;
         public float attackCD;
 
+        public float timeBleedAgain;
+        public float bleedInterval = 0.7f;
+
         public GameObject bloodPrefab;
         internal GameObject CachedBloodPrefab;
         public float lifetimeScale = 12f;
-        public float startSizeScale = 7f;
+        public float startSizeScale = 8f;
         public float colorScale = 2f;
 
         public Transform mouth;
@@ -157,111 +160,63 @@ namespace FightingReapers
             VFXDestroyAfterSeconds destroyAfterSeconds = CachedBloodPrefab.GetComponent<VFXDestroyAfterSeconds>();
             destroyAfterSeconds.lifeTime = lifeTime;
             Destroy(destroyAfterSeconds);
-
-            //Destroy(bloodPrefab, 11f);
         }
-        /*
-        IEnumerator BloodFade(GameObject go)
-        {
+        
 
-            var renderer = go.GetComponent<Renderer>();
-
-            Color color;
-
-            if (renderer == null)
-            {
-                Logger.Log(Logger.Level.Info, "NO RENDERER");
-                yield return null;
-            }
-
-            if (renderer != null)
-
-            {
-                color = renderer.material.color;
-
-                if (color == null)
-                {
-                    Logger.Log(Logger.Level.Info, "NO COLOR");
-                    yield return null;
-                }
-            }
-
-            
-
-            
-
-            Logger.Log(Logger.Level.Info, "BLOODFADE PASSED CHECK 1");
-            yield return new WaitForSeconds(1f);
-            color.a = 0.75f;
-            Logger.Log(Logger.Level.Info, "BLOODFADE PASSED CHECK 2");
-            renderer.material.color = color;
-            yield return new WaitForSeconds(1f);
-            color.a = 0.50f;
-            renderer.material.color = color;
-            yield return new WaitForSeconds(1f);
-            color.a = 0.25f;
-            renderer.material.color = color;
-            yield return new WaitForSeconds(1f);
-            color.a = 0.10f;
-            renderer.material.color = color;
-            yield return new WaitForSeconds(1f);
-            color.a = 0.01f;
-            renderer.material.color = color;
-            Logger.Log(Logger.Level.Info, "BLOODFADE PASSED CHECK 3");
-            Destroy(go, 1f);
-            Logger.Log(Logger.Level.Info, "BLOODFADE PASSED ALL CHECKS");
-        }
-
-        */
-
-        public IEnumerator Bleed(Collider collider, Vector3 bleedPoint, float lifeTime, float lifeTimeScale, float startSizeScale)
+        public IEnumerator BloodPuff(Collider collider, Vector3 bleedPoint, float lifeTime, float lifeTimeScale, float startSizeScale)
 
         {
             BloodGen(collider, lifeTime, lifeTimeScale, startSizeScale);
 
             GameObject blood1 = Instantiate(CachedBloodPrefab, bleedPoint, Quaternion.identity);
             blood1.SetActive(true);
-                
-            yield return new WaitForSeconds(0.5f);
+
+            //yield return new WaitForSeconds(0.5f);
+
+            yield break;
+
+            /*
+
             BloodGen(collider, lifeTime, lifeTimeScale/2, startSizeScale/2);
             GameObject blood2 = Instantiate(CachedBloodPrefab, bleedPoint, Quaternion.identity);
             blood2.SetActive(true);
 
-            yield return new WaitForSeconds(0.5f);
-            BloodGen(collider, lifeTime, lifeTimeScale / 2, startSizeScale / 2);
-            GameObject blood3 = Instantiate(CachedBloodPrefab, bleedPoint, Quaternion.identity);
-            blood3.SetActive(true);
-
-            yield return new WaitForSeconds(0.5f);
-            BloodGen(collider, lifeTime, lifeTimeScale / 2, startSizeScale / 2);
-            GameObject blood4 = Instantiate(CachedBloodPrefab, bleedPoint, Quaternion.identity);
-            blood4.SetActive(true);
-
-            yield return new WaitForSeconds(0.5f);
-            BloodGen(collider, lifeTime, lifeTimeScale / 2, startSizeScale / 2);
-            GameObject blood5 = Instantiate(CachedBloodPrefab, bleedPoint, Quaternion.identity);
-            blood5.SetActive(true);
-
-            yield return new WaitForSeconds(0.5f);
-            BloodGen(collider, lifeTime, lifeTimeScale / 2, startSizeScale / 2);
-            GameObject blood6 = Instantiate(CachedBloodPrefab, bleedPoint, Quaternion.identity);
-            blood6.SetActive(true);
-
-            yield return new WaitForSeconds(0.5f);
-            BloodGen(collider, lifeTime, lifeTimeScale / 2, startSizeScale / 2);
-            GameObject blood7 = Instantiate(CachedBloodPrefab, bleedPoint, Quaternion.identity);
-            blood7.SetActive(true);
-
-            yield return new WaitForSeconds(0.5f);
-            BloodGen(collider, lifeTime, lifeTimeScale / 2, startSizeScale / 2);
-            GameObject blood8 = Instantiate(CachedBloodPrefab, bleedPoint, Quaternion.identity);
-            blood8.SetActive(true);
+            */
 
             //CoroutineHost.StartCoroutine(BloodFade(blood1));
         }
 
-        
-        
+        public IEnumerator Bleed(Collider collider, Vector3 bleedPoint, float lifeTime, float lifeTimeScale, float startSizeScale)
+
+        {
+            BloodGen(collider, lifeTime, lifeTimeScale, startSizeScale);
+
+            var startTime = DateTime.UtcNow;
+
+            
+
+            Vector3 position = collider.transform.InverseTransformPoint(bleedPoint);
+
+            GameObject blood1 = Instantiate(CachedBloodPrefab, position, Quaternion.identity);
+            blood1.SetActive(true);
+
+            yield return new WaitForSeconds(0.1f);
+
+            if (Time.time > timeBleedAgain)
+            {
+                timeBleedAgain = Time.time + bleedInterval;
+                Instantiate(CachedBloodPrefab, position, Quaternion.identity);
+            }
+
+            yield return new WaitForSeconds(6f);
+
+            yield break;
+
+            
+        }
+
+
+
 
 
         public static FMODAsset GetFmodAsset(string audioPath)
@@ -440,12 +395,24 @@ namespace FightingReapers
                 animator.speed = 0.6f;
                 yield return new WaitForSeconds(1f);
                 animator.speed = 0.4f;
+                yield return new WaitForSeconds(UnityEngine.Random.Range(0f, 1f));
+                animator.speed = 0.1f;
                 yield return new WaitForSeconds(1f);
-                animator.speed = 1f;
-                yield return new WaitForSeconds(1f);
-                animator.speed = 0.5f;
-                yield return new WaitForSeconds(1f);
+                animator.speed = UnityEngine.Random.Range(0.1f, 0.5f);
+                yield return new WaitForSeconds(UnityEngine.Random.Range(0f, 1f));
                 animator.speed = 0.2f;
+                yield return new WaitForSeconds(1f);
+                animator.speed = 0.1f;
+                yield return new WaitForSeconds(UnityEngine.Random.Range(0f, 1f));
+                animator.speed = 0.2f;
+                yield return new WaitForSeconds(1f);
+                animator.speed = UnityEngine.Random.Range(0.1f, 0.5f);
+                yield return new WaitForSeconds(UnityEngine.Random.Range(0f, 1f));
+                animator.speed = 0.2f;
+                yield return new WaitForSeconds(1f);
+                animator.speed = 0.1f;
+                yield return new WaitForSeconds(1f);
+                animator.speed = 0.01f;
             }
 
             if (isReaper)
@@ -453,7 +420,7 @@ namespace FightingReapers
                
                 var rm = __instance.GetComponentInChildren<ReaperMeleeAttack>();
                 var fb = __instance.GetComponentInParent<FightBehavior>();
-                SafeAnimator.SetBool(__instance.GetAnimator(), "attacking", false);
+                //SafeAnimator.SetBool(__instance.GetAnimator(), "attacking", false);
                 rm.animator.SetBool(MeleeAttack.biteAnimID, false);
 
                 UnityEngine.Object.Destroy(fb.LBMandible.gameObject.GetComponent<TriggerController>());
@@ -480,7 +447,7 @@ namespace FightingReapers
         private static float timeSnapAgain;
         private static float snapInterval = UnityEngine.Random.Range(0.5f, 2.3f);
 
-        public static void Snap(Creature creature)
+        public static void Snap(Creature creature, Vector3 position)
         {
             var rb = creature.GetComponentInParent<Rigidbody>();
             var rm = creature.GetComponentInParent<ReaperMeleeAttack>();
@@ -488,7 +455,7 @@ namespace FightingReapers
             if (Time.time > timeSnapAgain)
             {
                 timeSnapAgain = Time.time + snapInterval;
-                rb.AddForce(rm.mouth.transform.forward * 10f, ForceMode.VelocityChange);
+                rb.AddForce(position * 10f, ForceMode.VelocityChange);
 
                 Logger.Log(Logger.Level.Debug, "REFLEXIVE SNAP!");
                 ErrorMessage.AddMessage("REFLEXIVE SNAP!");
@@ -513,7 +480,11 @@ namespace FightingReapers
             var rm = __instance.GetComponentInChildren<ReaperMeleeAttack>();
             var liveMixin = __instance.GetComponentInParent<LiveMixin>();
 
-            
+            float bloodPuffScale = damageInfo.damage*5f;
+
+            Vector3 bleedPoint = collider.ClosestPointOnBounds(damageInfo.position);
+
+
 
             if (damageInfo.damage >= 20f)
             {
@@ -529,13 +500,15 @@ namespace FightingReapers
                 Logger.Log(Logger.Level.Debug, "NOTICEABLE DAMAGE!");
                 ErrorMessage.AddMessage("NOTICEABLE DAMAGE!");
 
-                creature.flinch += 0.4f * damageInfo.damage;
+                creature.flinch += 0.04f * damageInfo.damage;
             }
 
 
             if (damageInfo.damage >= 25f)
             {
                 //Reflexively snap at damage dealer 
+
+                var position = Vector3.Normalize(damageInfo.dealer.transform.position - __instance.transform.position);
 
                 if (Time.time > fb.nextTarget)
                 {
@@ -548,14 +521,14 @@ namespace FightingReapers
 
                 {
 
-                    fb.Bleed(collider, damageInfo.position, 11f, 8f, 2f); 
-
+                    fb.BloodPuff(collider, bleedPoint, 11f, 8f, bloodPuffScale*2);
+                    fb.Bleed(collider, bleedPoint, 11f, 8f, bloodPuffScale);
 
                     Logger.Log(Logger.Level.Info, "CLAW PASSED CHECK 3");
 
                 }
 
-                Snap(__instance);
+                Snap(__instance, position);
                 
             }
 
@@ -574,7 +547,7 @@ namespace FightingReapers
                         {
                             timeBleedAgain = Time.time + bleedInterval;
                             Vector3 position = __instance.transform.InverseTransformPoint(damageInfo.position);
-                            fb.Bleed(collider, damageInfo.position, 11f, 8f, 2f);
+                            fb.BloodPuff(collider, damageInfo.position, 11f, 8f, 2f);
                             GameObject blood = UnityEngine.Object.Instantiate(fb.CachedBloodPrefab, position, Quaternion.identity);
                             blood.SetActive(true);
                             UnityEngine.Object.Destroy(blood, 10f);
